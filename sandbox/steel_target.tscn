@@ -1,0 +1,68 @@
+[gd_scene load_steps=8 format=3]
+
+[sub_resource type="StandardMaterial3D" id="steel"]
+albedo_color = Color(0.75, 0.3, 0.15, 1)
+metallic = 0.5
+roughness = 0.5
+
+[sub_resource type="BoxShape3D" id="plate_shape"]
+size = Vector3(0.25, 0.25, 0.006)
+
+[sub_resource type="BoxMesh" id="plate_mesh"]
+size = Vector3(0.25, 0.25, 0.006)
+
+[sub_resource type="BoxShape3D" id="bar_shape"]
+size = Vector3(0.5, 0.03, 0.03)
+
+[sub_resource type="BoxMesh" id="bar_mesh"]
+size = Vector3(0.5, 0.03, 0.03)
+
+[sub_resource type="BoxMesh" id="post_mesh"]
+size = Vector3(0.04, 1.3, 0.04)
+
+[sub_resource type="StandardMaterial3D" id="post"]
+albedo_color = Color(0.25, 0.25, 0.25, 1)
+
+[node name="SteelTarget" type="Node3D"]
+
+[node name="Frame" type="StaticBody3D" parent="."]
+collision_layer = 0
+collision_mask = 0
+
+[node name="Bar" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+mesh = SubResource("bar_mesh")
+surface_material_override/0 = SubResource("post")
+
+[node name="BarShape" type="CollisionShape3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+shape = SubResource("bar_shape")
+
+[node name="PostLeft" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25, 0.65, 0)
+mesh = SubResource("post_mesh")
+surface_material_override/0 = SubResource("post")
+
+[node name="PostRight" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, 0.65, 0)
+mesh = SubResource("post_mesh")
+surface_material_override/0 = SubResource("post")
+
+[node name="Plate" type="RigidBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.135, 0)
+collision_layer = 512
+collision_mask = 64
+mass = 2.9
+angular_damp = 0.4
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Plate"]
+shape = SubResource("plate_shape")
+
+[node name="Mesh" type="MeshInstance3D" parent="Plate"]
+mesh = SubResource("plate_mesh")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Hinge" type="HingeJoint3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 1.28, 0)
+node_a = NodePath("../Frame")
+node_b = NodePath("../Plate")

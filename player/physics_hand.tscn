@@ -1,0 +1,38 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://player/physics_hand.gd" id="1"]
+
+[sub_resource type="SphereShape3D" id="shape"]
+radius = 0.04
+
+[sub_resource type="BoxMesh" id="palm"]
+size = Vector3(0.03, 0.09, 0.08)
+
+[sub_resource type="BoxMesh" id="fingers"]
+size = Vector3(0.022, 0.07, 0.07)
+
+[sub_resource type="StandardMaterial3D" id="skin"]
+albedo_color = Color(0.72, 0.56, 0.47, 1)
+roughness = 0.8
+
+[node name="PhysicsHand" type="RigidBody3D"]
+top_level = true
+collision_layer = 4
+collision_mask = 513
+mass = 0.8
+gravity_scale = 0.0
+can_sleep = false
+inertia = Vector3(0.01, 0.01, 0.01)
+script = ExtResource("1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("shape")
+
+[node name="Palm" type="MeshInstance3D" parent="."]
+mesh = SubResource("palm")
+surface_material_override/0 = SubResource("skin")
+
+[node name="Fingers" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.012, -0.055, 0)
+mesh = SubResource("fingers")
+surface_material_override/0 = SubResource("skin")
