@@ -1,0 +1,52 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://weapons/parts/magazine.gd" id="1"]
+[ext_resource type="Resource" path="res://weapons/parts/cartridge_556x45.tres" id="2"]
+[ext_resource type="Script" path="res://player/grab_point.gd" id="3"]
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.024, 0.18, 0.062)
+
+[sub_resource type="BoxMesh" id="body_mesh"]
+size = Vector3(0.024, 0.18, 0.062)
+
+[sub_resource type="StandardMaterial3D" id="polymer"]
+albedo_color = Color(0.09, 0.09, 0.1, 1)
+roughness = 0.75
+
+[sub_resource type="BoxMesh" id="round_mesh"]
+size = Vector3(0.01, 0.01, 0.055)
+
+[sub_resource type="StandardMaterial3D" id="brass"]
+albedo_color = Color(0.83, 0.65, 0.25, 1)
+metallic = 0.8
+roughness = 0.35
+
+[node name="Magazine556" type="RigidBody3D"]
+collision_layer = 32
+collision_mask = 513
+mass = 0.47
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, -0.09, 0)
+script = ExtResource("1")
+cartridge = ExtResource("2")
+capacity = 30
+empty_mass = 0.115
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, 0)
+shape = SubResource("shape")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, 0)
+mesh = SubResource("body_mesh")
+surface_material_override/0 = SubResource("polymer")
+
+[node name="TopRound" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.004, 0)
+mesh = SubResource("round_mesh")
+surface_material_override/0 = SubResource("brass")
+
+[node name="GrabPoint" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, -0.1, 0)
+script = ExtResource("3")

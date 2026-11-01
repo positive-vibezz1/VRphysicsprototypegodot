@@ -1,0 +1,296 @@
+[gd_scene load_steps=30 format=3]
+
+[ext_resource type="Script" path="res://weapons/gun.gd" id="1"]
+[ext_resource type="Resource" path="res://weapons/parts/cartridge_556x45.tres" id="2"]
+[ext_resource type="Script" path="res://weapons/parts/fire_control.gd" id="3"]
+[ext_resource type="Script" path="res://weapons/parts/mag_well.gd" id="4"]
+[ext_resource type="Script" path="res://player/grab_point.gd" id="5"]
+[ext_resource type="PackedScene" path="res://weapons/parts/magazine_556.tscn" id="6"]
+[ext_resource type="Script" path="res://ballistics/gas_port_spec.gd" id="7"]
+
+[sub_resource type="Resource" id="gas_port"]
+script = ExtResource("7")
+port_distance = 0.188
+pressure_ratio = 0.42
+
+[sub_resource type="StandardMaterial3D" id="receiver"]
+albedo_color = Color(0.16, 0.16, 0.17, 1)
+roughness = 0.6
+metallic = 0.3
+
+[sub_resource type="StandardMaterial3D" id="steel"]
+albedo_color = Color(0.3, 0.31, 0.33, 1)
+metallic = 0.7
+roughness = 0.4
+
+[sub_resource type="BoxShape3D" id="upper_shape"]
+size = Vector3(0.03, 0.09, 0.25)
+
+[sub_resource type="BoxMesh" id="upper_mesh"]
+size = Vector3(0.03, 0.05, 0.25)
+
+[sub_resource type="BoxMesh" id="lower_mesh"]
+size = Vector3(0.03, 0.04, 0.2)
+
+[sub_resource type="BoxShape3D" id="handguard_shape"]
+size = Vector3(0.045, 0.05, 0.24)
+
+[sub_resource type="BoxMesh" id="handguard_mesh"]
+size = Vector3(0.045, 0.05, 0.24)
+
+[sub_resource type="CylinderMesh" id="barrel_mesh"]
+top_radius = 0.0085
+bottom_radius = 0.0085
+height = 0.368
+radial_segments = 10
+rings = 1
+
+[sub_resource type="BoxShape3D" id="barrel_shape"]
+size = Vector3(0.017, 0.017, 0.14)
+
+[sub_resource type="CylinderMesh" id="buffer_mesh"]
+top_radius = 0.015
+bottom_radius = 0.015
+height = 0.2
+radial_segments = 12
+rings = 1
+
+[sub_resource type="BoxShape3D" id="stock_shape"]
+size = Vector3(0.036, 0.11, 0.07)
+
+[sub_resource type="BoxMesh" id="stock_mesh"]
+size = Vector3(0.036, 0.11, 0.07)
+
+[sub_resource type="BoxShape3D" id="grip_shape"]
+size = Vector3(0.03, 0.09, 0.042)
+
+[sub_resource type="BoxMesh" id="grip_mesh"]
+size = Vector3(0.03, 0.09, 0.042)
+
+[sub_resource type="BoxMesh" id="trigger_mesh"]
+size = Vector3(0.006, 0.024, 0.006)
+
+[sub_resource type="BoxMesh" id="lever_mesh"]
+size = Vector3(0.003, 0.016, 0.004)
+
+[sub_resource type="BoxMesh" id="sight_mesh"]
+size = Vector3(0.008, 0.03, 0.012)
+
+[sub_resource type="BoxShape3D" id="carrier_shape"]
+size = Vector3(0.028, 0.024, 0.17)
+
+[sub_resource type="BoxMesh" id="carrier_mesh"]
+size = Vector3(0.032, 0.026, 0.17)
+
+[sub_resource type="BoxShape3D" id="handle_shape"]
+size = Vector3(0.05, 0.012, 0.02)
+
+[sub_resource type="BoxMesh" id="handle_mesh"]
+size = Vector3(0.05, 0.012, 0.02)
+
+[sub_resource type="SphereShape3D" id="well_shape"]
+radius = 0.06
+
+[node name="AR" type="Node3D" node_paths=PackedStringArray("start_magazine")]
+script = ExtResource("1")
+cartridge = ExtResource("2")
+start_magazine = NodePath("Magazine")
+barrel_length = 0.368
+barrel_mass = 0.0
+gas_port = SubResource("gas_port")
+bolt_travel = 0.089
+spring_preload = 26.0
+spring_rate = 360.0
+eject_travel = 0.06
+feed_travel = 0.065
+catch_travel = 0.08
+feed_work = 0.2
+
+[node name="Frame" type="RigidBody3D" parent="."]
+collision_layer = 8
+collision_mask = 769
+mass = 2.3
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, 0.045, -0.13)
+
+[node name="UpperShape" type="CollisionShape3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -0.06)
+shape = SubResource("upper_shape")
+
+[node name="HandguardShape" type="CollisionShape3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.055, -0.305)
+shape = SubResource("handguard_shape")
+
+[node name="MuzzleShape" type="CollisionShape3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.055, -0.46)
+shape = SubResource("barrel_shape")
+
+[node name="StockShape" type="CollisionShape3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0.27)
+shape = SubResource("stock_shape")
+
+[node name="GripShape" type="CollisionShape3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 0.951057, 0.309017, 0, -0.309017, 0.951057, 0, -0.03, 0.018)
+shape = SubResource("grip_shape")
+
+[node name="Upper" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, -0.06)
+mesh = SubResource("upper_mesh")
+surface_material_override/0 = SubResource("receiver")
+
+[node name="Lower" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.018, -0.07)
+mesh = SubResource("lower_mesh")
+surface_material_override/0 = SubResource("receiver")
+
+[node name="Handguard" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.055, -0.305)
+mesh = SubResource("handguard_mesh")
+surface_material_override/0 = SubResource("receiver")
+
+[node name="Barrel" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.055, -0.344)
+mesh = SubResource("barrel_mesh")
+surface_material_override/0 = SubResource("steel")
+
+[node name="BufferTube" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.055, 0.165)
+mesh = SubResource("buffer_mesh")
+surface_material_override/0 = SubResource("receiver")
+
+[node name="Stock" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0.27)
+mesh = SubResource("stock_mesh")
+surface_material_override/0 = SubResource("receiver")
+
+[node name="GripMesh" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 0.951057, 0.309017, 0, -0.309017, 0.951057, 0, -0.03, 0.018)
+mesh = SubResource("grip_mesh")
+surface_material_override/0 = SubResource("receiver")
+
+[node name="FrontSight" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.09, -0.41)
+mesh = SubResource("sight_mesh")
+surface_material_override/0 = SubResource("steel")
+
+[node name="RearSight" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.095, 0.03)
+mesh = SubResource("sight_mesh")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Grip" type="Marker3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 0.309017, -0.951057, 0, 0.951057, 0.309017, 0, -0.03, 0.02)
+script = ExtResource("5")
+
+[node name="HandguardGrab" type="Marker3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -0.305)
+script = ExtResource("5")
+mode = 1
+radius = 0.09
+half_length = 0.12
+
+[node name="Muzzle" type="Marker3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.055, -0.528)
+
+[node name="MagWell" type="Area3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 0.990268, -0.139173, 0, 0.139173, 0.990268, 0, 0.02, -0.115)
+collision_layer = 0
+collision_mask = 32
+monitorable = false
+script = ExtResource("4")
+cartridge = ExtResource("2")
+engage_length = 0.08
+
+[node name="Mouth" type="CollisionShape3D" parent="Frame/MagWell"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.08, 0)
+shape = SubResource("well_shape")
+
+[node name="TriggerPivot" type="Node3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.002, -0.04)
+
+[node name="Trigger" type="MeshInstance3D" parent="Frame/TriggerPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.012, 0)
+mesh = SubResource("trigger_mesh")
+surface_material_override/0 = SubResource("steel")
+
+[node name="SelectorPivot" type="Node3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.017, 0.022, -0.01)
+
+[node name="Lever" type="MeshInstance3D" parent="Frame/SelectorPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008, 0)
+mesh = SubResource("lever_mesh")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Bolt" type="RigidBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.055, -0.07)
+collision_layer = 16
+collision_mask = 0
+mass = 0.395
+center_of_mass_mode = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Bolt"]
+shape = SubResource("carrier_shape")
+
+[node name="CarrierMesh" type="MeshInstance3D" parent="Bolt"]
+mesh = SubResource("carrier_mesh")
+surface_material_override/0 = SubResource("steel")
+
+[node name="EjectionPort" type="Marker3D" parent="Bolt"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.02, 0.005, -0.05)
+
+[node name="ChargingHandle" type="RigidBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.09, 0.03)
+collision_layer = 16
+collision_mask = 0
+mass = 0.08
+center_of_mass_mode = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ChargingHandle"]
+shape = SubResource("handle_shape")
+
+[node name="HandleMesh" type="MeshInstance3D" parent="ChargingHandle"]
+mesh = SubResource("handle_mesh")
+surface_material_override/0 = SubResource("steel")
+
+[node name="HandleGrab" type="Marker3D" parent="ChargingHandle"]
+script = ExtResource("5")
+mode = 1
+radius = 0.07
+
+[node name="Rail" type="SliderJoint3D" parent="."]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0, 0.055, -0.07)
+node_a = NodePath("../Frame")
+node_b = NodePath("../Bolt")
+
+[node name="HandleRail" type="SliderJoint3D" parent="."]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0, 0.09, 0.03)
+node_a = NodePath("../Frame")
+node_b = NodePath("../ChargingHandle")
+
+[node name="HandleToCarrier" type="Generic6DOFJoint3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.07, 0.03)
+node_a = NodePath("../Bolt")
+node_b = NodePath("../ChargingHandle")
+linear_limit_x/enabled = false
+linear_limit_y/enabled = false
+linear_limit_z/enabled = true
+linear_limit_z/upper_distance = 0.0
+linear_limit_z/lower_distance = -0.091
+angular_limit_x/enabled = false
+angular_limit_y/enabled = false
+angular_limit_z/enabled = false
+
+[node name="FireControl" type="Node" parent="." node_paths=PackedStringArray("trigger_visual", "selector_visual")]
+script = ExtResource("3")
+trigger_visual = NodePath("../Frame/TriggerPivot")
+selector_visual = NodePath("../Frame/SelectorPivot")
+break_force = 30.0
+has_auto = true
+hammer_inertia = 5.8e-06
+mainspring_preload = 1.1
+mainspring_rate = 0.5
+cock_travel = 0.04
+pin_mass = 0.006
+
+[node name="Magazine" parent="." instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 0.990268, -0.139173, 0, 0.139173, 0.990268, 0, 0.02, -0.115)

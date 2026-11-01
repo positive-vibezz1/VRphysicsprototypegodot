@@ -1,0 +1,182 @@
+[gd_scene load_steps=20 format=3]
+
+[ext_resource type="Script" path="res://weapons/gun.gd" id="1"]
+[ext_resource type="Resource" path="res://weapons/parts/cartridge_9x19.tres" id="2"]
+[ext_resource type="Script" path="res://weapons/parts/fire_control.gd" id="3"]
+[ext_resource type="Script" path="res://weapons/parts/mag_well.gd" id="4"]
+[ext_resource type="Script" path="res://player/grab_point.gd" id="5"]
+[ext_resource type="PackedScene" path="res://weapons/parts/magazine_9mm.tscn" id="6"]
+
+[sub_resource type="StandardMaterial3D" id="polymer"]
+albedo_color = Color(0.11, 0.11, 0.12, 1)
+roughness = 0.8
+
+[sub_resource type="StandardMaterial3D" id="steel"]
+albedo_color = Color(0.3, 0.31, 0.33, 1)
+metallic = 0.7
+roughness = 0.4
+
+[sub_resource type="BoxShape3D" id="dust_cover_shape"]
+size = Vector3(0.026, 0.02, 0.195)
+
+[sub_resource type="BoxMesh" id="dust_cover_mesh"]
+size = Vector3(0.026, 0.02, 0.195)
+
+[sub_resource type="BoxShape3D" id="grip_shape"]
+size = Vector3(0.03, 0.1, 0.05)
+
+[sub_resource type="BoxMesh" id="grip_mesh"]
+size = Vector3(0.03, 0.1, 0.05)
+
+[sub_resource type="BoxMesh" id="guard_bottom_mesh"]
+size = Vector3(0.012, 0.004, 0.05)
+
+[sub_resource type="BoxMesh" id="guard_front_mesh"]
+size = Vector3(0.012, 0.03, 0.004)
+
+[sub_resource type="BoxMesh" id="trigger_mesh"]
+size = Vector3(0.006, 0.024, 0.006)
+
+[sub_resource type="BoxMesh" id="hammer_mesh"]
+size = Vector3(0.008, 0.032, 0.01)
+
+[sub_resource type="BoxShape3D" id="slide_shape"]
+size = Vector3(0.028, 0.03, 0.19)
+
+[sub_resource type="BoxMesh" id="slide_mesh"]
+size = Vector3(0.03, 0.032, 0.19)
+
+[sub_resource type="BoxMesh" id="sight_mesh"]
+size = Vector3(0.006, 0.006, 0.01)
+
+[sub_resource type="SphereShape3D" id="well_shape"]
+radius = 0.05
+
+[node name="Pistol" type="Node3D" node_paths=PackedStringArray("start_magazine")]
+script = ExtResource("1")
+cartridge = ExtResource("2")
+start_magazine = NodePath("Magazine")
+barrel_length = 0.114
+barrel_mass = 0.09
+bolt_travel = 0.065
+spring_preload = 40.0
+spring_rate = 540.0
+eject_travel = 0.04
+feed_travel = 0.045
+catch_travel = 0.058
+
+[node name="Frame" type="RigidBody3D" parent="."]
+collision_layer = 8
+collision_mask = 513
+mass = 0.29
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, 0, -0.015)
+
+[node name="DustCoverShape" type="CollisionShape3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.019, -0.0275)
+shape = SubResource("dust_cover_shape")
+
+[node name="GripShape" type="CollisionShape3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 0.951057, 0.309017, 0, -0.309017, 0.951057, 0, -0.035, 0.018)
+shape = SubResource("grip_shape")
+
+[node name="DustCover" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.019, -0.0275)
+mesh = SubResource("dust_cover_mesh")
+surface_material_override/0 = SubResource("polymer")
+
+[node name="GripMesh" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 0.951057, 0.309017, 0, -0.309017, 0.951057, 0, -0.035, 0.018)
+mesh = SubResource("grip_mesh")
+surface_material_override/0 = SubResource("polymer")
+
+[node name="GuardBottom" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.021, -0.045)
+mesh = SubResource("guard_bottom_mesh")
+surface_material_override/0 = SubResource("polymer")
+
+[node name="GuardFront" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.006, -0.07)
+mesh = SubResource("guard_front_mesh")
+surface_material_override/0 = SubResource("polymer")
+
+[node name="Grip" type="Marker3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 0.309017, -0.951057, 0, 0.951057, 0.309017, 0, -0.03, 0.02)
+script = ExtResource("5")
+
+[node name="Muzzle" type="Marker3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.045, -0.128)
+
+[node name="MagWell" type="Area3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 0.951057, 0.309017, 0, -0.309017, 0.951057, 0, 0.012, 0.0027)
+collision_layer = 0
+collision_mask = 32
+monitorable = false
+script = ExtResource("4")
+cartridge = ExtResource("2")
+
+[node name="Mouth" type="CollisionShape3D" parent="Frame/MagWell"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+shape = SubResource("well_shape")
+
+[node name="TriggerPivot" type="Node3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008, -0.042)
+
+[node name="Trigger" type="MeshInstance3D" parent="Frame/TriggerPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.012, 0)
+mesh = SubResource("trigger_mesh")
+surface_material_override/0 = SubResource("steel")
+
+[node name="HammerPivot" type="Node3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.022, 0.07)
+
+[node name="Hammer" type="MeshInstance3D" parent="Frame/HammerPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.016, 0)
+mesh = SubResource("hammer_mesh")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Bolt" type="RigidBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.045, -0.03)
+collision_layer = 16
+collision_mask = 1
+mass = 0.29
+center_of_mass_mode = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Bolt"]
+shape = SubResource("slide_shape")
+
+[node name="SlideMesh" type="MeshInstance3D" parent="Bolt"]
+mesh = SubResource("slide_mesh")
+surface_material_override/0 = SubResource("steel")
+
+[node name="FrontSight" type="MeshInstance3D" parent="Bolt"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.019, -0.088)
+mesh = SubResource("sight_mesh")
+surface_material_override/0 = SubResource("polymer")
+
+[node name="RearSight" type="MeshInstance3D" parent="Bolt"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.019, 0.085)
+mesh = SubResource("sight_mesh")
+surface_material_override/0 = SubResource("polymer")
+
+[node name="EjectionPort" type="Marker3D" parent="Bolt"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.018, 0.008, 0.015)
+
+[node name="SlideGrab" type="Marker3D" parent="Bolt"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.05)
+script = ExtResource("5")
+mode = 1
+radius = 0.09
+
+[node name="Rail" type="SliderJoint3D" parent="."]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0, 0.045, -0.03)
+node_a = NodePath("../Frame")
+node_b = NodePath("../Bolt")
+
+[node name="FireControl" type="Node" parent="." node_paths=PackedStringArray("hammer_visual", "trigger_visual")]
+script = ExtResource("3")
+hammer_visual = NodePath("../Frame/HammerPivot")
+trigger_visual = NodePath("../Frame/TriggerPivot")
+
+[node name="Magazine" parent="." instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 0.951057, 0.309017, 0, -0.309017, 0.951057, 0, 0.012, 0.0027)

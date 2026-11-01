@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CartridgeSpec" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://weapons/parts/cartridge_spec.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+bullet_mass = 0.004
+bore_diameter = 0.0057
+charge_mass = 0.0017
+chamber_volume = 1.75e-06
+burn_time = 0.001
+engrave_pressure = 4e+07
+friction_pressure = 1.5e+07
+no_fire_energy = 0.1
+all_fire_energy = 0.55
+casing_mass = 0.0057
+round_mass = 0.0118
+casing_length = 0.0447
+casing_radius = 0.0048

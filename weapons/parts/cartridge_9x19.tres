@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="CartridgeSpec" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://weapons/parts/cartridge_spec.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+drag_coefficient = 0.25
+charge_mass = 0.00032
+burn_time = 0.00018
