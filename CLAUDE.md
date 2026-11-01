@@ -22,20 +22,12 @@ Git Bash: `GODOT="/d/godot/Godot_v4.7.2-stable_win64_console.exe"`. PowerShell: 
 | Open editor | `$GODOT --path . -e` |
 | Import assets and refresh class cache (after adding files or editing scenes) | `$GODOT --headless --xr-mode off --path . --import` |
 | Check one script for parse errors | `$GODOT --headless --xr-mode off --path . --check-only --script res://path/to/file.gd` |
-| Run all tests | `$GODOT --headless --xr-mode off --path . -s res://addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit` |
+| Run all tests | `$GODOT --headless --xr-mode off --fixed-fps 90 --path . -s res://addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit` |
 | Run the game (SteamVR must be running) | `$GODOT --path .` |
 
 Always pass `--xr-mode off` to headless runs: without it Godot starts SteamVR and hangs.
 
 Claude can't see or feel anything in the headset. After any change that affects feel or handling, list exactly what ruby should check in VR.
-
-## First-time setup (not done yet; delete this section once done)
-
-The folder only contains this file so far.
-1. Create `project.godot`: Mobile renderer, `xr/openxr/enabled=true`, `xr/shaders/enabled=true`, Jolt, `physics/common/physics_ticks_per_second=90`, `debug/gdscript/warnings/untyped_declaration=2` (error).
-2. Install GUT into `addons/gut/` and enable it.
-3. `git init` with Godot's `.gitignore` (ignores `.godot/`) and `.gitattributes` (`* text=auto eol=lf`).
-4. Build the test range in `sandbox/` and set it as the main scene.
 
 ## Layout
 
@@ -61,12 +53,14 @@ Keep each scene and its script side by side, with `snake_case` file names. Move 
 - **No faked mechanics.** No animations or scripted kicks standing in for physics. Recoil is the reaction to the gas pushing the bullet: the momentum given to the bullet and gas goes back into the breech, bolt or slide, and from there through joints into the frame and the hands.
 - **Sub-tick events:** barrel time (about 1 ms), the firing pin strike and primer ignition are much shorter than a physics tick (about 11 ms at 90 Hz). Integrate them in GDScript with sub-steps using the real equations (spring force, pressure × bore area), then apply the result to the Jolt bodies as impulses. Momentum must be conserved; keep a GUT test for it.
 - **Firing chain:** trigger → sear → hammer or striker driven by its spring → firing pin → primer. The primer fires only when the pin's impact energy is above the primer's threshold, so light strikes and duds are possible.
-- **Gun parts:** slide, bolt, bolt carrier, hammer, trigger, magazine, follower and charging handle are separate RigidBody3Ds held by joints with limits. Springs are forces with real spring rates.
+- **Gun parts:** frame, slide or bolt carrier, charging handle and magazine are separate RigidBody3Ds held by joints with limits. Springs are forces with real spring rates. Trigger, sear, hammer and firing pin are sub-stepped in `FireControl` instead: tested as a Jolt body at 90 Hz, a sprung hammer hits the 47 rad/s engine limit and needs 3 ticks for a 3 ms fall. The magazine follower is implied by the round count.
+- **Fast stops:** Jolt only enforces a joint limit once a part is past it, so `Rail` slows a fast bolt to land on its stop, with equal and opposite impulses on the bolt and the frame. At rest the joint limit alone holds it, because the prediction can't see forces from the hands.
 - **Small parts and stability:** joints between bodies with very different masses (a few-gram pin on a kilogram frame) jitter in Jolt. If a tiny part is unstable, simulate its motion with the sub-step approach above instead of raising solver iterations blindly.
 - **Bullets and casings** are pooled RigidBody3Ds with real mass and `continuous_cd = true` (a rifle bullet travels about 10 m per tick). Apply air drag in `_integrate_forces`. If CCD misses thin colliders, raise it with ruby before switching to shape casts.
 - **Physics hands:** hands are RigidBody3Ds pulled toward the tracked controller pose by a PD controller (force and torque), never parented to the controller. A grabbed gun is attached to the hand with a joint, so its mass, inertia and recoil act on the hand. Two-handed grips: primary grip, support hand on the handguard, and the AR stock braces against a shoulder collider on the player body.
 - **Locomotion:** smooth movement and smooth turning on the thumbsticks. No teleport, no snap turn.
-- **Collision:** primitive or convex shapes on moving bodies, never trimesh. Use collision layers and masks so parts inside one gun only collide where they need to.
+- **Collision:** primitive or convex shapes on moving bodies, never trimesh. Use collision layers and masks so parts inside one gun only collide where they need to. A body only gets pushed by layers in its own mask: bullets can't move a target whose mask leaves out the bullet layer.
+- **Layers:** 1 world, 2 player, 3 hand, 4 gun frame, 5 moving gun part, 6 magazine, 7 bullet, 8 casing, 9 shoulder, 10 target.
 
 ## Performance
 

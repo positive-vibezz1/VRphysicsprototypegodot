@@ -170,7 +170,7 @@ mesh = SubResource("board_mesh")
 surface_material_override/0 = SubResource("paper")
 
 [node name="Crate1" type="RigidBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 0.175, -8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0.175, -8)
 collision_layer = 512
 collision_mask = 589
 mass = 4.0
@@ -183,7 +183,7 @@ mesh = SubResource("crate_mesh")
 surface_material_override/0 = SubResource("wood")
 
 [node name="Crate2" type="RigidBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.1, 0.175, -8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.6, 0.175, -8)
 collision_layer = 512
 collision_mask = 589
 mass = 4.0
@@ -196,7 +196,7 @@ mesh = SubResource("crate_mesh")
 surface_material_override/0 = SubResource("wood")
 
 [node name="Crate3" type="RigidBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.3, 0.525, -8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.8, 0.525, -8)
 collision_layer = 512
 collision_mask = 589
 mass = 4.0
@@ -209,7 +209,7 @@ mesh = SubResource("crate_mesh")
 surface_material_override/0 = SubResource("wood")
 
 [node name="Can1" type="RigidBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.4, 0.76, -8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.9, 0.76, -8)
 collision_layer = 512
 collision_mask = 589
 mass = 0.35
@@ -222,7 +222,7 @@ mesh = SubResource("can_mesh")
 surface_material_override/0 = SubResource("paper")
 
 [node name="Can2" type="RigidBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.2, 0.76, -8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.7, 0.76, -8)
 collision_layer = 512
 collision_mask = 589
 mass = 0.35

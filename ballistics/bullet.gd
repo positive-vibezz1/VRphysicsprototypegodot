@@ -22,7 +22,8 @@ func launch(cartridge: CartridgeSpec, from: Vector3, velocity: Vector3) -> void:
 	mass = cartridge.bullet_mass
 	_drag_factor = 0.5 * AIR_DENSITY * cartridge.drag_coefficient * cartridge.bore_area() / cartridge.bullet_mass
 	_age = 0.0
-	global_transform = Transform3D(Basis.looking_at(velocity), from)
+	var up := Vector3.UP if absf(velocity.normalized().y) < 0.99 else Vector3.RIGHT
+	global_transform = Transform3D(Basis.looking_at(velocity, up), from)
 	linear_velocity = velocity
 	angular_velocity = Vector3.ZERO
 	_tracer.scale.z = velocity.length() * 0.006
