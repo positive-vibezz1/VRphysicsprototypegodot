@@ -1,6 +1,7 @@
 class_name Ballistics
 extends Node
-## Autoload that owns the pools: bullets, casings, bullet holes and, in a child, sounds. Nothing is created after startup.
+## Autoload that owns the pools: bullets, casings, bullet holes and, in children, sounds and fluid drag. Nothing is
+## created after startup.
 
 const BULLET_SCENE := "res://ballistics/bullet.tscn"
 const CASING_SCENE := "res://ballistics/casing.tscn"
@@ -27,6 +28,7 @@ var _click: AudioStreamWAV
 func _ready() -> void:
 	pool = self
 	add_child(Sounds.new())
+	add_child(FluidDrag.new())
 	for i: int in BULLET_COUNT:
 		var bullet: Bullet = (load(BULLET_SCENE) as PackedScene).instantiate()
 		add_child(bullet)

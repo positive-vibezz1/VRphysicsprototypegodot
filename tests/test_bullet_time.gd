@@ -114,6 +114,8 @@ func test_leaving_the_scene_puts_time_back() -> void:
 
 func test_ticks_keep_their_rate_and_get_shorter() -> void:
 	var body := RigidBody3D.new()
+	# As dense as water: at 1 kg this 1 m sphere is a balloon, and air holds up most of it.
+	body.mass = 500.0
 	var shape := CollisionShape3D.new()
 	shape.shape = SphereShape3D.new()
 	body.add_child(shape)

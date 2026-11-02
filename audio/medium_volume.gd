@@ -2,17 +2,14 @@
 class_name MediumVolume
 extends Area3D
 ## A box of something other than the air around it, with nothing holding it in. What's at any point in the world is
-## here, for anything that depends on it. A liquid also drags on what moves through it and splashes when something goes
-## in.
+## here, for anything that depends on it, and FluidDrag and Bullet get their drag and buoyancy from its density. A liquid
+## also splashes when something goes in.
 
 ## A body going in slower than this makes no splash.
 const SLOWEST_SPLASH := 0.3
 ## Player, hand, gun frame, magazine, casing and target. Bullets check for themselves, because they can cross a box
 ## between two ticks.
 const LIQUID_MASK := 686
-## How fast water slows what's in it, per second: a dropped gun settles at about 5 m/s. Water drag really goes as speed
-## squared and shape, but only for tuning this tiny pool's feel would that show. Nothing floats, as nothing here would.
-const LIQUID_DAMP := 2.0
 
 ## Every volume in the scene, for looking up what's at a point without a physics query.
 static var all: Array[MediumVolume] = []
@@ -46,6 +43,14 @@ static func liquid_at(point: Vector3) -> MediumVolume:
 	return null
 
 
+## How much fluid a straight line goes through, in kg/m2.
+static func column(from: Vector3, to: Vector3) -> float:
+	var total := Medium.ambient.density * from.distance_to(to)
+	for volume: MediumVolume in all:
+		total += (volume.medium.density - Medium.ambient.density) * volume.path_length(from, to)
+	return total
+
+
 func _enter_tree() -> void:
 	all.append(self)
 
@@ -66,10 +71,6 @@ func _ready() -> void:
 	add_child(collision)
 	if medium.is_liquid:
 		collision_mask = LIQUID_MASK
-		linear_damp_space_override = Area3D.SPACE_OVERRIDE_COMBINE
-		angular_damp_space_override = Area3D.SPACE_OVERRIDE_COMBINE
-		linear_damp = LIQUID_DAMP
-		angular_damp = LIQUID_DAMP
 		set_meta(&"surface", Sounds.Surface.WATER)
 		if not Engine.is_editor_hint():
 			body_entered.connect(_on_body_entered)

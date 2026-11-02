@@ -36,6 +36,7 @@ physics_material_override = SubResource("no_friction")
 lock_rotation = true
 can_sleep = false
 script = ExtResource("1")
+metadata/bulk_density = 985.0
 
 [node name="Legs" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.625, 0)

@@ -2,7 +2,6 @@ class_name Bullet
 extends RigidBody3D
 ## Pooled projectile with real mass. Jolt carries it and hands its momentum to whatever it hits.
 
-const AIR_DENSITY := 1.225
 const LIFETIME := 4.0
 const MIN_TRACER_LENGTH := 0.05
 const MIN_TRACER_WIDTH := 0.003
@@ -11,29 +10,27 @@ const MIN_TRACER_WIDTH := 0.003
 ## is under a pixel past a couple of meters, and a line that thin breaks up into specks with no antialiasing.
 @export var tracer_angle := 0.003
 
+## 0.5 Cd A / m. Times the kg/m2 of whatever it went through, this is how much of its speed is gone.
 var _drag_factor := 0.0
 var _age := 0.0
 var _arriving_velocity := Vector3.ZERO
 var _launched_from := Vector3.ZERO
+var _last_position := Vector3.ZERO
 var _launch_direction := Vector3.ZERO
 var _in_liquid := false
 
 @onready var _tracer: Node3D = $Tracer
 
 
-## Speed after dt under quadratic drag: the exact solution of dv/dt = -k v^2, so it is stable at any tick.
-static func drag_speed(speed: float, factor: float, dt: float) -> float:
-	return speed / (1.0 + factor * speed * dt)
-
-
 func launch(cartridge: CartridgeSpec, from: Vector3, velocity: Vector3) -> void:
 	process_mode = Node.PROCESS_MODE_INHERIT
 	visible = true
 	mass = cartridge.bullet_mass
-	_drag_factor = 0.5 * AIR_DENSITY * cartridge.drag_coefficient * cartridge.bore_area() / cartridge.bullet_mass
+	_drag_factor = 0.5 * cartridge.drag_coefficient * cartridge.bore_area() / cartridge.bullet_mass
 	_age = 0.0
 	_in_liquid = false
 	_launched_from = from
+	_last_position = from
 	_launch_direction = velocity.normalized()
 	var up := Vector3.UP if absf(velocity.normalized().y) < 0.99 else Vector3.RIGHT
 	global_transform = Transform3D(Basis.looking_at(velocity, up), from)
@@ -101,6 +98,8 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var velocity := state.linear_velocity
 	var speed := velocity.length()
 	_splash(state.transform.origin, state.transform.origin + velocity * state.step, speed)
-	if speed > 0.0:
-		state.linear_velocity = velocity * drag_speed(speed, _drag_factor, state.step) / speed
+	# Quadratic drag makes speed a function of the fluid passed through, dv/dx = -k rho v, so exp() is exact however far
+	# a tick goes: 10 m of a rifle bullet's flight can cross a whole box, or end in the water where it should.
+	state.linear_velocity = velocity * exp(-_drag_factor * MediumVolume.column(_last_position, state.transform.origin))
+	_last_position = state.transform.origin
 	_arriving_velocity = state.linear_velocity

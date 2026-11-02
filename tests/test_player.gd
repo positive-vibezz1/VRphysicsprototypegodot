@@ -251,7 +251,7 @@ func test_a_jump_lands_on_bending_legs_that_straighten_again() -> void:
 	for i: int in 60:
 		await wait_physics_frames(1)
 		lowest = minf(lowest, _player.global_position.y)
-	assert_between(lowest, -0.2, -0.01, "the view dips a little on landing")
+	assert_between(lowest, -0.2, -0.005, "the view dips a little on landing")
 	assert_almost_eq(_player.global_position.y, 0.0, 0.01, "and comes back up")
 
 

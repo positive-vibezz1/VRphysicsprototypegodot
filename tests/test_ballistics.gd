@@ -22,11 +22,11 @@ func _wall(at: Vector3, thickness: float) -> StaticBody3D:
 
 
 func test_drag_matches_the_closed_form() -> void:
-	var factor := 0.5 * Bullet.AIR_DENSITY * NINE.drag_coefficient * NINE.bore_area() / NINE.bullet_mass
-	var speed := 360.0
-	for i: int in 90:
-		speed = Bullet.drag_speed(speed, factor, 1.0 / 90.0)
-	assert_almost_eq(speed, 360.0 / (1.0 + factor * 360.0 * 1.0), 0.01)
+	var factor := 0.5 * Medium.ambient.density * NINE.drag_coefficient * NINE.bore_area() / NINE.bullet_mass
+	var bullet := Ballistics.pool.fire_bullet(NINE, Vector3(-20, 500, 0), Vector3(0, 0, -360))
+	await wait_physics_frames(90)
+	var speed := bullet.linear_velocity.length()
+	assert_almost_eq(speed, 360.0 / (1.0 + factor * 360.0 * 1.0), 4.0)
 	# 9 mm tables lose about 90 m/s over the first 300 m, about one second of flight.
 	assert_between(speed, 235.0, 290.0)
 
