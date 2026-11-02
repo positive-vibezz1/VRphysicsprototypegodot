@@ -544,6 +544,6 @@ outline_size = 12
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, 24)
 billboard = 1
 pixel_size = 0.004
-text = "GRAPPLE\nEmpty hand, point at a block and squeeze the trigger.\nSqueeze harder to wind in, ease off to swing."
+text = "GRAPPLE\nPoint an empty hand at a block until the dot shows, and squeeze to connect.\nHold on to swing, and pull your arm back to haul yourself in."
 font_size = 48
 outline_size = 12

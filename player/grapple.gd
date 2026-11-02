@@ -1,22 +1,28 @@
 class_name Grapple
 extends RayCast3D
-## A cable shot from an empty hand at the parkour surface it points at. It can only pull: the body swings on it under
-## its own weight and momentum, a harder squeeze winds it in, and letting go keeps whatever speed the body has.
+## A cable shot from an empty hand at the parkour surface it points at. A dot and a thin line show what it would catch,
+## and squeezing connects: the line turns thick and orange and the controller thumps. The cable can only pull. The body
+## swings on it under its own weight and momentum, pulling the arm back hauls on it, and letting go keeps whatever
+## speed the body has.
 
-## Trigger squeeze: past AIM shows where it would hit, past FIRE shoots and starts winding in, and anywhere above
-## HOLD keeps hold of it without winding, for swinging.
-const AIM := 0.1
+## Trigger squeeze: past FIRE shoots, and it holds on until the squeeze drops below HOLD.
 const HOLD := 0.3
 const FIRE := 0.6
+## An arm pulling slower than this, or a body turning with the hand held out, isn't hauling.
+const SLOWEST_HAUL := 1.0
+## Radius of the dot as a share of its distance, so it's the same size to the eye up close and across the course.
+const DOT_SIZE := 0.006
+const CONNECTED_DOT_SCALE := 2.5
 
 @export var max_range := 40.0
-## Winding speed at a full squeeze.
-@export var reel_speed := 8.0
-## About twice body weight: lifts the body at about 1 g, and a hard swing doesn't stretch it far.
-@export var max_tension := 1500.0
+## Cable taken in per meter of arm pulled, on top of the arm itself. At 1 a hard 70 cm haul throws the body at about
+## 4 m/s, as much as the tension allows in that time, and a longer one faster.
+@export var haul_gain := 1.0
+## About three times body weight: a hard haul launches the body, and a hard swing doesn't stretch it far.
+@export var max_tension := 2500.0
 ## How fast it takes up stretch, in rad/s. A critically damped spring: higher is stiffer.
 @export var response := 12.0
-## Stops winding in this far from the anchor, so it can't pull the hand into it.
+## Stops taking in cable this far from the anchor, so it can't pull the hand into it.
 @export var min_length := 0.8
 
 var attached := false
@@ -27,20 +33,23 @@ var length := 0.0
 var _armed := false
 var _previous_distance := 0.0
 
+@onready var _aim_line: MeshInstance3D = $AimLine
 @onready var _line: MeshInstance3D = $Line
+@onready var _dot: MeshInstance3D = $Dot
 
 
 func update(hand: PhysicsHand, body: RigidBody3D, delta: float) -> void:
 	var free := not hand.held and not hand.climbing
 	var squeeze := hand.input_trigger
-	if not free or squeeze < AIM:
+	if not free or squeeze < HOLD:
 		_armed = free
-	if attached and (not free or squeeze < HOLD):
 		attached = false
+	_aim_line.visible = false
 	_line.visible = false
+	_dot.visible = false
 	if attached:
-		_pull(hand, body, squeeze, delta)
-	elif free and squeeze >= AIM:
+		_pull(hand, body, delta)
+	elif free and not hand.remote_target:
 		_aim(hand, squeeze)
 
 
@@ -58,25 +67,33 @@ func _aim(hand: PhysicsHand, squeeze: float) -> void:
 		_armed = false
 		length = from.distance_to(anchor)
 		_previous_distance = length
-		hand.controller.trigger_haptic_pulse(&"haptic", 0.0, 0.6, 0.04, 0.0)
-	_line.visible = true
-	stretch_line(_line, hand.global_position, anchor)
+		hand.controller.trigger_haptic_pulse(&"haptic", 0.0, 0.8, 0.06, 0.0)
+	_show(hand, _line if attached else _aim_line)
 
 
-## Measured from the controller and not the body, so hauling on the cable with an arm yanks the body along it.
-func _pull(hand: PhysicsHand, body: RigidBody3D, squeeze: float, delta: float) -> void:
+## Measured from the controller and not the body, so pulling the arm back hauls on the cable.
+func _pull(hand: PhysicsHand, body: RigidBody3D, delta: float) -> void:
 	var to_anchor := anchor - hand.target.origin
 	var distance := to_anchor.length()
-	var winding := reel_speed * clampf(inverse_lerp(FIRE, 1.0, squeeze), 0.0, 1.0)
-	# Any slack winds itself in, so it's already taut when it's next needed.
-	length = maxf(minf(length, distance) - winding * delta, min_length)
-	var stretching := (distance - _previous_distance) / delta + winding
+	var along := to_anchor.normalized()
+	var hauling := haul_gain * maxf((body.linear_velocity - hand.controller_velocity).dot(along) - SLOWEST_HAUL, 0.0)
+	# Any slack is taken in, so it's already taut when it's next needed: reach out, then pull again.
+	length = maxf(minf(length, distance) - hauling * delta, min_length)
+	var stretching := (distance - _previous_distance) / delta + hauling
 	_previous_distance = distance
 	var tension := body.mass * (response * response * (distance - length) + 2.0 * response * stretching)
 	if tension > 0.0:
-		body.apply_central_force(to_anchor.normalized() * minf(tension, max_tension))
-	_line.visible = true
-	stretch_line(_line, hand.global_position, anchor)
+		body.apply_central_force(along * minf(tension, max_tension))
+	_show(hand, _line)
+
+
+func _show(hand: PhysicsHand, line: MeshInstance3D) -> void:
+	line.visible = true
+	stretch_line(line, hand.global_position, anchor)
+	_dot.visible = true
+	_dot.global_position = anchor
+	var size := hand.global_position.distance_to(anchor) * DOT_SIZE
+	_dot.scale = Vector3.ONE * (size * CONNECTED_DOT_SCALE if attached else size)
 
 
 ## Lays a 1 m long mesh along its Z axis between two points.

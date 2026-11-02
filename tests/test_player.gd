@@ -442,7 +442,46 @@ func _point_right_hand(direction: Vector3) -> void:
 	_right.set_pose(&"aim", aim, Vector3.ZERO, Vector3.ZERO, XRPose.XR_TRACKING_CONFIDENCE_HIGH)
 
 
-func test_grapple_winds_the_body_up_and_lets_it_fly_on() -> void:
+func test_pointing_at_a_grapple_target_shows_what_it_would_catch() -> void:
+	_add_block(Vector3(0.2, 8, 2.8), Vector3(2, 0.5, 2))
+	await wait_physics_frames(10)
+	var grapple: Grapple = _player.get_node("RightGrapple")
+	var aim_line: MeshInstance3D = grapple.get_node("AimLine")
+	var line: MeshInstance3D = grapple.get_node("Line")
+	var dot: MeshInstance3D = grapple.get_node("Dot")
+	_point_right_hand(Vector3.DOWN)
+	await wait_physics_frames(2)
+	assert_false(dot.visible, "nothing shows pointing at the floor")
+	_point_right_hand(Vector3.UP)
+	await wait_physics_frames(2)
+	assert_true(aim_line.visible and dot.visible, "without touching the trigger")
+	assert_false(line.visible, "and it isn't connected yet")
+	assert_almost_eq(dot.global_position.y, 7.75, 0.01, "the dot sits on the surface")
+	var aiming_size := dot.scale.x
+	_right.set_input(&"trigger", 1.0)
+	await wait_physics_frames(2)
+	assert_true(grapple.attached)
+	assert_true(line.visible, "connecting swaps to the thick line")
+	assert_false(aim_line.visible)
+	assert_gt(dot.scale.x, aiming_size * 2.0, "and grows the dot")
+	_right.set_input(&"trigger", 0.0)
+	await wait_physics_frames(2)
+	assert_false(line.visible, "letting go ends it")
+	assert_true(aim_line.visible, "and it's back to aiming")
+
+
+func test_connecting_alone_doesnt_move_the_body() -> void:
+	_add_block(Vector3(0.2, 8, 2.8), Vector3(2, 0.5, 2))
+	await wait_physics_frames(10)
+	var start := _player.global_position
+	_point_right_hand(Vector3.UP)
+	_right.set_input(&"trigger", 1.0)
+	await wait_physics_frames(60)
+	assert_true((_player.get_node("RightGrapple") as Grapple).attached)
+	assert_almost_eq(_player.global_position.distance_to(start), 0.0, 0.05, "a full squeeze doesn't wind it in")
+
+
+func test_pulling_the_arm_back_hauls_the_body_and_it_flies_on() -> void:
 	_add_block(Vector3(0.2, 8, 2.8), Vector3(2, 0.5, 2))
 	await wait_physics_frames(10)
 	var grapple: Grapple = _player.get_node("RightGrapple")
@@ -451,10 +490,19 @@ func test_grapple_winds_the_body_up_and_lets_it_fly_on() -> void:
 	await wait_physics_frames(3)
 	assert_true(grapple.attached, "squeezing shoots it")
 	assert_almost_eq(grapple.anchor.y, 7.75, 0.01, "at the surface it points at")
-	await wait_physics_frames(60)
-	assert_gt(_player.global_position.y, 1.5, "winding in hauls the body up")
-	var peak_acceleration := (grapple.max_tension - _player.mass * 9.8) / _player.mass
-	assert_lt(_player.linear_velocity.y, peak_acceleration * 63.0 * DT + 0.2, "no harder than the cable can pull")
+	# A hard haul: 3.6 m/s down from about head height.
+	var high := RIGHT_REST.translated(Vector3.UP * 0.4)
+	for i: int in 20:
+		_set_pose(_right, RIGHT_REST.interpolate_with(high, float(i + 1) / 20.0))
+		await wait_physics_frames(1)
+	await wait_physics_frames(20)
+	var low := RIGHT_REST.translated(Vector3.DOWN * 0.3)
+	for i: int in 12:
+		_set_pose(_right, high.interpolate_with(low, float(i + 1) / 12.0))
+		await wait_physics_frames(1)
+	var fastest := grapple.max_tension / _player.mass * 13.0 * DT
+	assert_gt(_player.linear_velocity.y, 3.0, "the haul threw the body up")
+	assert_lt(_player.linear_velocity.y, fastest, "no harder than the cable can pull")
 	var rising := _player.linear_velocity.y
 	_right.set_input(&"trigger", 0.0)
 	await wait_physics_frames(2)
@@ -469,14 +517,12 @@ func test_grapple_swings_at_a_held_length() -> void:
 	var hand: PhysicsHand = _player.get_node("RightHand")
 	await wait_physics_frames(2)
 	_point_right_hand(hand.global_position.direction_to(Vector3(5, 8.75, 3)))
-	_right.set_input(&"trigger", 0.65)
+	_right.set_input(&"trigger", 1.0)
 	await wait_physics_frames(2)
 	assert_true(grapple.attached)
-	_right.set_input(&"trigger", 0.5)
 	var length := grapple.length
 	await wait_physics_frames(60)
-	assert_gt(grapple.anchor.distance_to(hand.target.origin), length - 1.0, "not wound in")
-	assert_lt(grapple.anchor.distance_to(hand.target.origin), length + 0.3, "and it holds the body")
+	assert_lt(grapple.anchor.distance_to(hand.target.origin), length + 0.3, "it holds the body")
 	assert_gt(_player.linear_velocity.x, 2.0, "swinging under the anchor")
 	assert_gt(_player.global_position.y, 1.0, "not dropping to the floor")
 
@@ -488,6 +534,7 @@ func test_grapple_only_catches_parkour_surfaces() -> void:
 	_right.set_input(&"trigger", 1.0)
 	await wait_physics_frames(3)
 	assert_false(grapple.attached, "the floor is not one")
+	assert_false((grapple.get_node("Dot") as MeshInstance3D).visible)
 
 
 func test_grapple_doesnt_fire_from_a_hand_holding_a_gun() -> void:
@@ -501,6 +548,7 @@ func test_grapple_doesnt_fire_from_a_hand_holding_a_gun() -> void:
 	_right.set_input(&"trigger", 1.0)
 	await wait_physics_frames(3)
 	assert_false(grapple.attached)
+	assert_false((grapple.get_node("Dot") as MeshInstance3D).visible, "no aiming with a gun in hand")
 	_right.set_input(&"grip", 0.0)
 	await wait_physics_frames(3)
 	assert_null(hand.held, "dropped it")
