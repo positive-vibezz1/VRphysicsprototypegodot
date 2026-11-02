@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://weapons/parts/magazine_9mm.tscn" id="magazine_9mm"]
 [ext_resource type="PackedScene" path="res://weapons/parts/magazine_556.tscn" id="magazine_556"]
 [ext_resource type="Material" path="res://weapons/parts/materials/graphite.tres" id="graphite"]
+[ext_resource type="Script" path="res://player/holster.gd" id="holster"]
 
 [sub_resource type="BoxMesh" id="meter_mesh"]
 size = Vector3(0.003, 0.1, 0.012)
@@ -34,6 +35,9 @@ radius = 0.06
 
 [sub_resource type="BoxMesh" id="pouch_mesh"]
 size = Vector3(0.1, 0.13, 0.05)
+
+[sub_resource type="BoxMesh" id="holster_mesh"]
+size = Vector3(0.04, 0.13, 0.045)
 
 [node name="Player" type="RigidBody3D"]
 collision_layer = 2
@@ -132,11 +136,31 @@ meter = NodePath("../LeftHand/BulletTimeMeter")
 [node name="MagPouch" type="Node3D" parent="." node_paths=PackedStringArray("head")]
 top_level = true
 script = ExtResource("mag_pouch")
-magazines = Array[PackedScene]([ExtResource("magazine_9mm"), ExtResource("magazine_556")])
 head = NodePath("../XROrigin3D/XRCamera3D")
+pose = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.6, -0.12)
+radius = 0.2
+magazines = Array[PackedScene]([ExtResource("magazine_9mm"), ExtResource("magazine_556")])
 
 [node name="Mesh" type="MeshInstance3D" parent="MagPouch"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.03)
 cast_shadow = 0
 mesh = SubResource("pouch_mesh")
 surface_material_override/0 = ExtResource("graphite")
+
+[node name="HipHolster" type="Node3D" parent="." node_paths=PackedStringArray("head")]
+top_level = true
+script = ExtResource("holster")
+head = NodePath("../XROrigin3D/XRCamera3D")
+pose = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22, -0.6, 0.03)
+
+[node name="Mesh" type="MeshInstance3D" parent="HipHolster"]
+transform = Transform3D(1, 0, 0, 0, 0.95105654, -0.309017, 0, 0.309017, 0.95105654, 0, -0.057, -0.102)
+cast_shadow = 0
+mesh = SubResource("holster_mesh")
+surface_material_override/0 = ExtResource("graphite")
+
+[node name="ShoulderHolster" type="Node3D" parent="." node_paths=PackedStringArray("head")]
+top_level = true
+script = ExtResource("holster")
+head = NodePath("../XROrigin3D/XRCamera3D")
+pose = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0.15, -0.12, 0.18)

@@ -1,16 +1,11 @@
 class_name MagPouch
-extends Node3D
+extends BodySpot
 ## A pouch at the front of the belt. An empty hand squeezing in it draws a full magazine for the gun in the other
 ## hand, as a real one with its weight. Drawn magazines are pooled for each cartridge: once a pool is full, the oldest
 ## one lying at rest somewhere is refilled and drawn again, so the count of bodies stays bounded.
 
 ## The magazines it can hand out. The one whose cartridge fits the other hand's gun is drawn.
 @export var magazines: Array[PackedScene] = []
-## The eyes. The pouch follows where they face, at this offset: right, up, back.
-@export var head: Node3D
-## Front of the belt for most people, about 0.6 m below eye level, with the hand a little out from the body.
-@export var offset := Vector3(0.0, -0.6, -0.12)
-@export var radius := 0.2
 ## Magazines of each kind drawn before the oldest is reused.
 @export var pool_size := 6
 
@@ -27,22 +22,10 @@ func _ready() -> void:
 				_scenes[state.get_node_property_value(0, i)] = scene
 
 
-func _process(_delta: float) -> void:
-	global_transform = spot()
-
-
-## Where the pouch is, facing the way the head does. The head's right axis stays level while looking down at the belt,
-## where its forward axis points at the floor.
-func spot() -> Transform3D:
-	var right := Vector3(head.global_basis.x.x, 0.0, head.global_basis.x.z).normalized()
-	var facing := Basis(right, Vector3.UP, right.cross(Vector3.UP))
-	return Transform3D(facing, head.global_position + facing * offset)
-
-
 ## Whether a squeeze of this hand would draw a magazine now. Cheap enough to ask every tick.
 func can_draw(hand: PhysicsHand) -> bool:
 	var gun := _gun_for(hand)
-	return gun != null and _scenes.has(gun.mag_well.cartridge) and spot().origin.distance_to(hand.global_position) < radius
+	return gun != null and _scenes.has(gun.mag_well.cartridge) and in_reach(hand.global_position)
 
 
 ## A full magazine for the other hand's gun, at the hand for it to grab, or null if this hand can't draw one.

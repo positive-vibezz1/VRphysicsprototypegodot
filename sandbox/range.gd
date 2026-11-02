@@ -5,6 +5,7 @@ extends Node3D
 const FRAME_PROFILE := "/interaction_profiles/valve/frame_controller_valve"
 const COMMON_CONTROLS := """Grip: grab. Point at a gun or mag up to 1.5 m away, then grip, to pull it to you.
 Gun in one hand: grip the other at your belt buckle to draw a full mag.
+Let go of a gun at your right hip or right shoulder: holster it.
 Trigger: fire. Free hand on the slide or charging handle: rack.
 Grip a ladder, pipe, red ledge or crevice: climb. Jump on a ledge: mantle.
 Trigger on an empty hand, at the dot: grapple. Pull your arm back to haul.

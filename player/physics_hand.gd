@@ -322,7 +322,8 @@ func _update_remote_target() -> void:
 		var pointing := aim_direction if aim_direction != Vector3.ZERO else -global_basis.y
 		var best := cos(deg_to_rad(remote_grab_cone))
 		for point: GrabPoint in GrabPoint.all:
-			if point.mode != GrabPoint.Mode.SNAP or not point.enabled or point.holder:
+			# A frozen gun is in a holster, which a hand reaches into in person.
+			if point.mode != GrabPoint.Mode.SNAP or not point.enabled or point.holder or point.body.freeze:
 				continue
 			var offset := point.global_position - global_position
 			var distance := offset.length()
@@ -340,6 +341,8 @@ func _update_remote_target() -> void:
 func grab(point: GrabPoint) -> void:
 	DebugLog.event("hand", "%s grabbed %s %s from %.2f m, %.2f kg" % [_label(), point.owner.name, point.name, global_position.distance_to(point.global_position), point.owner.held_mass()])
 	_grip_sound(point.body)
+	if point.owner is Gun:
+		Holster.draw(point.owner)
 	held = point
 	point.holder = self
 	if point.mode == GrabPoint.Mode.SNAP:
@@ -385,6 +388,10 @@ func release() -> void:
 		gun.shot_fired.disconnect(_on_shot_fired)
 		gun.bolt_stopped.disconnect(_on_bolt_stopped)
 		gun.surface_hit.disconnect(_on_gun_touched)
+		# Only the hand on the grip puts a gun away, and only once nothing else holds it.
+		var still_held := other_hand and other_hand.held and other_hand.held.owner == gun
+		if point == gun.grip and not still_held and Holster.stow(gun):
+			_pulse(0.3, 0.02)
 
 
 ## Swaps a rigid hold for a pin, when something else (magazine rails) takes over the orientation.

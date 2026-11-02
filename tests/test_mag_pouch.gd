@@ -33,6 +33,8 @@ func before_each() -> void:
 	_pouch = MagPouch.new()
 	_pouch.magazines = [MAG_9MM, MAG_556]
 	_pouch.head = head
+	_pouch.pose = Transform3D(Basis.IDENTITY, Vector3(0, -0.6, -0.12))
+	_pouch.radius = 0.2
 	_world.add_child(_pouch)
 	_left = _hand(_pouch.spot().origin, true)
 	_right = _hand(HEAD + Vector3(0.3, -0.5, -0.4), false)
@@ -107,12 +109,27 @@ func test_nothing_away_from_the_belt() -> void:
 	assert_eq(_magazines(), 0)
 
 
-func test_the_pouch_follows_where_the_head_faces_even_looking_down() -> void:
+func test_the_pouch_stays_put_while_the_head_looks_around_and_comes_round_when_it_turns_far() -> void:
 	var head := _pouch.head
-	head.basis = Basis(Vector3.UP, PI * 0.5) * Basis(Vector3.RIGHT, -1.2)
-	var spot := _pouch.spot().origin
-	# Turned to face -X, so the belt is out along -X, and looking down hardly moves it.
-	assert_almost_eq(spot, HEAD + Vector3(-0.12, -0.6, 0), Vector3.ONE * 1.0e-4)
+	var ahead := HEAD + Vector3(0, -0.6, -0.12)
+	assert_almost_eq(_pouch.spot().origin, ahead, Vector3.ONE * 1.0e-4)
+	# Looking down and a little to the left, as at the belt, leaves it where it is.
+	head.basis = Basis(Vector3.UP, 0.4) * Basis(Vector3.RIGHT, -1.2)
+	assert_almost_eq(_pouch.spot().origin, ahead, Vector3.ONE * 1.0e-4)
+	# Turned a quarter to the left, the torso has to come round to within the neck's twist.
+	head.basis = Basis(Vector3.UP, PI * 0.5)
+	var turned := Basis(Vector3.UP, PI * 0.5 - _pouch.max_twist)
+	assert_almost_eq(_pouch.spot().origin, HEAD + turned * Vector3(0, -0.6, -0.12), Vector3.ONE * 1.0e-4)
+
+
+func test_a_stick_turn_turns_the_pouch_with_the_view() -> void:
+	var head := _pouch.head
+	# A stick turn rotates what the head is in, not the head in it.
+	var origin := Node3D.new()
+	_world.add_child(origin)
+	head.reparent(origin)
+	origin.rotate_y(PI)
+	assert_almost_eq(_pouch.spot().origin, origin.global_basis * HEAD + Vector3(0, -0.6, 0.12), Vector3.ONE * 1.0e-4)
 
 
 func test_a_full_pool_reuses_the_oldest_mag_at_rest_and_refills_it() -> void:
