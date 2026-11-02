@@ -1,4 +1,4 @@
-[gd_scene load_steps=29 format=3]
+[gd_scene load_steps=30 format=3]
 
 [ext_resource type="Script" path="res://sandbox/range.gd" id="1"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="2"]
@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://sandbox/parkour.tscn" id="8"]
 [ext_resource type="Shader" path="res://sandbox/world_grid.gdshader" id="9"]
 [ext_resource type="PackedScene" path="res://sandbox/dummy.tscn" id="10"]
+[ext_resource type="PackedScene" path="res://sandbox/block_course.tscn" id="11"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_material"]
 
@@ -242,5 +243,8 @@ shape = SubResource("can_shape")
 [node name="Mesh" type="MeshInstance3D" parent="Can2"]
 mesh = SubResource("can_mesh")
 surface_material_override/0 = SubResource("paper")
+
+[node name="BlockCourse" parent="." instance=ExtResource("11")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, 2)
 
 [node name="Parkour" parent="." instance=ExtResource("8")]

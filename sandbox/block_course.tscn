@@ -1,0 +1,114 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://sandbox/parkour_block.gd" id="1"]
+[ext_resource type="Shader" path="res://sandbox/world_grid.gdshader" id="2"]
+[ext_resource type="PackedScene" path="res://sandbox/dummy.tscn" id="3"]
+
+[sub_resource type="ShaderMaterial" id="deck"]
+shader = ExtResource("2")
+shader_parameter/color = Color(0.2, 0.55, 0.55, 1)
+
+[sub_resource type="ShaderMaterial" id="ramp"]
+shader = ExtResource("2")
+shader_parameter/color = Color(0.8, 0.5, 0.2, 1)
+
+[sub_resource type="ShaderMaterial" id="wall"]
+shader = ExtResource("2")
+shader_parameter/color = Color(0.62, 0.58, 0.5, 1)
+
+[sub_resource type="StandardMaterial3D" id="lip"]
+albedo_color = Color(0.85, 0.22, 0.14, 1)
+metallic = 0.3
+roughness = 0.5
+
+[node name="BlockCourse" type="Node3D"]
+
+[node name="Sign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 1)
+billboard = 1
+pixel_size = 0.006
+text = "BLOCK COURSE"
+font_size = 48
+outline_size = 8
+
+[node name="CoverA" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.3, 0.55, -3)
+script = ExtResource("1")
+size = Vector3(2.6, 1.1, 0.4)
+material = SubResource("wall")
+
+[node name="CoverB" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3, 0.55, -6.5)
+script = ExtResource("1")
+size = Vector3(2.6, 1.1, 0.4)
+material = SubResource("wall")
+
+[node name="Dummy1" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -9.5)
+
+[node name="Dummy2" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -11)
+
+[node name="Ramp" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.919145, -0.393919, 0, 0.393919, 0.919145, 0, 0.566171, -13.828784)
+script = ExtResource("1")
+size = Vector3(3, 0.4, 3.807887)
+material = SubResource("ramp")
+
+[node name="Deck" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, -18)
+script = ExtResource("1")
+size = Vector3(4, 1.5, 5)
+material = SubResource("deck")
+
+[node name="Dummy3" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.3, 1.5, -19.8)
+
+[node name="Dummy4" parent="." instance=ExtResource("3")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 4.5, 0, -22)
+
+[node name="GapDeck" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, -24)
+script = ExtResource("1")
+size = Vector3(3, 1.2, 4)
+material = SubResource("deck")
+
+[node name="AlleyLeft" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, 1.3, -30)
+script = ExtResource("1")
+size = Vector3(0.4, 2.6, 8)
+material = SubResource("wall")
+
+[node name="AlleyRight" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.6, 1.3, -28.5)
+script = ExtResource("1")
+size = Vector3(0.4, 2.6, 5)
+material = SubResource("wall")
+
+[node name="AlleyEnd" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.8, 1.3, -34.2)
+script = ExtResource("1")
+size = Vector3(8.8, 2.6, 0.4)
+material = SubResource("wall")
+
+[node name="Dummy5" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -33.2)
+
+[node name="Dummy6" parent="." instance=ExtResource("3")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 5, 0, -29.5)
+
+[node name="ClimbWall" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 1, -32)
+script = ExtResource("1")
+size = Vector3(4, 2, 4)
+material = SubResource("wall")
+
+[node name="ClimbLip" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.02, 2.03, -32)
+script = ExtResource("1")
+size = Vector3(0.1, 0.06, 4)
+material = SubResource("lip")
+climbable = true
+
+[node name="Dummy7" parent="." instance=ExtResource("3")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 10, 2, -31)
