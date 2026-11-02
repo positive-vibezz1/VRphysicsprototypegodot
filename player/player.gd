@@ -37,6 +37,19 @@ const FASTEST_ARM_SWING := 10.0
 const ARM_SWING_DECAY := 10.0
 ## How long after the button a swing still adds to the jump, so it can come after the button too.
 const ARM_SWING_WINDOW := 0.15
+## How far past a hold to look for somewhere to stand when mantling, nearest first.
+const MANTLE_REACHES: Array[float] = [0.35, 0.5, 0.65, 0.8]
+## How far above and below a hold the top of a ledge can be. A ladder's top rung is 20 cm under the top of its tower.
+const MANTLE_ABOVE := 0.4
+const MANTLE_BELOW := 0.3
+## How far the bottom of the torso clears the ledge on the way over it.
+const MANTLE_CLEARANCE := 0.12
+## How fast the body's speed closes on what the mantle wants, per second.
+const MANTLE_RESPONSE := 15.0
+## A hand comes off its hold this far from where it took it, while it's still close enough to rejoin the controller.
+const MANTLE_HAND_REACH := 0.45
+## Gives up after this long, in case something moved into the way.
+const MANTLE_TIME_LIMIT := 2.0
 
 ## A brisk walk, and a run with the left stick clicked in.
 @export var move_speed := 4.0
@@ -66,6 +79,10 @@ const ARM_SWING_WINDOW := 0.15
 @export var arm_force := 1100.0
 ## How fast the arms close the gap to the hold, in rad/s. A critically damped spring: higher is stiffer.
 @export var arm_response := 20.0
+## Most a mantle can pull with: arms and a leg together, about 2.5 times body weight.
+@export var mantle_force := 2000.0
+## How fast a mantle moves the body, and the view with it.
+@export var mantle_speed := 2.5
 ## Take-off speed: 3.2 m/s lifts the feet about 50 cm, a good standing jump.
 @export var jump_speed := 3.2
 ## Take-off speed added per m/s of the hands swinging up. A real arm swing adds about 20% to a jump, but nothing pushes
@@ -106,6 +123,9 @@ var _hands_height := 0.0
 var _arm_swing := 0.0
 var _take_off_time := 0.0
 var _swing_used := 0.0
+var _mantling := false
+var _mantle_spot := Vector3.ZERO
+var _mantle_time := 0.0
 var _was_menu := false
 var _was_jump := false
 var _measure_rate := false
@@ -162,13 +182,16 @@ func _physics_process(delta: float) -> void:
 	_left_grapple.update(_left_hand, self, delta)
 	_right_grapple.update(_right_hand, self, delta)
 	var hands_on := int(_left_hand.climbing) + int(_right_hand.climbing)
-	_tuck_legs(hands_on > 0 or _left_grapple.attached or _right_grapple.attached)
-	_stand(hands_on)
-	if hands_on > 0:
-		_hang(_left_hand, hands_on)
-		_hang(_right_hand, hands_on)
+	_tuck_legs(_mantling or hands_on > 0 or _left_grapple.attached or _right_grapple.attached)
+	if _mantling:
+		_mantle(delta)
 	else:
-		_walk(delta)
+		_stand(hands_on)
+		if hands_on > 0:
+			_hang(_left_hand, hands_on)
+			_hang(_right_hand, hands_on)
+		else:
+			_walk(delta)
 	_measure_arm_swing(delta)
 	_jump(delta)
 
@@ -323,7 +346,7 @@ func _measure_arm_swing(delta: float) -> void:
 ## Jump with its button, or by flicking the right stick up, and swing the arms up to jump higher.
 func _jump(delta: float) -> void:
 	var jump := not _fit_mode and (_right_controller.is_button_pressed(&"jump") or _right_controller.get_vector2(&"primary").y > 0.8)
-	if jump and not _was_jump and _air_time < JUMP_GRACE:
+	if jump and not _was_jump and not _mantling and not _start_mantle(_left_hand) and not _start_mantle(_right_hand) and _air_time < JUMP_GRACE:
 		_air_time = JUMP_GRACE
 		_take_off_time = ARM_SWING_WINDOW
 		_swing_used = 0.0
@@ -335,6 +358,70 @@ func _jump(delta: float) -> void:
 		if boost > _swing_used:
 			_push_off(boost - _swing_used)
 			_swing_used = boost
+
+
+## Looks for somewhere to stand on top of what this hand is holding, past it the way the head faces, or else past it
+## as seen from the head. Only a ledge has one: partway up a wall the search starts inside the wall and finds nothing.
+## Runs on a button press, so it may allocate.
+func _start_mantle(hand: PhysicsHand) -> bool:
+	if not hand.climbing:
+		return false
+	var hold := hand.global_position
+	var to_hold := hold - _camera.global_position
+	to_hold.y = 0.0
+	var facing := -_camera.global_basis.z
+	facing.y = 0.0
+	var space := get_world_3d().direct_space_state
+	var room := CapsuleShape3D.new()
+	room.radius = 0.2
+	room.height = 1.4
+	var room_query := PhysicsShapeQueryParameters3D.new()
+	room_query.shape = room
+	room_query.collision_mask = collision_mask
+	for away: Vector3 in [facing.normalized() if facing.dot(to_hold) > 0.0 else Vector3.ZERO, to_hold.normalized()]:
+		if away.is_zero_approx():
+			continue
+		for reach: float in MANTLE_REACHES:
+			var over := _camera.global_position + away * (to_hold.dot(away) + reach)
+			over.y = hold.y
+			var top := space.intersect_ray(PhysicsRayQueryParameters3D.create(over + Vector3.UP * MANTLE_ABOVE, over + Vector3.DOWN * MANTLE_BELOW, 1))
+			if top.is_empty() or (top["normal"] as Vector3).y < cos(floor_max_angle):
+				continue
+			var spot: Vector3 = top["position"]
+			room_query.transform = Transform3D(Basis.IDENTITY, spot + Vector3.UP * (_legs_bottom + room.height * 0.5))
+			if space.intersect_shape(room_query, 1).is_empty():
+				_mantling = true
+				_mantle_spot = spot
+				_mantle_time = 0.0
+				hand.controller.trigger_haptic_pulse(&"haptic", 0.0, 0.5, 0.05, 0.0)
+				return true
+	return false
+
+
+## Hauls the body up until the torso clears the ledge and then over it, with the legs tucked. It's still a capped force
+## on the body, so anything in the way stops it. Once the feet are over the ledge, the legs stand the body up.
+func _mantle(delta: float) -> void:
+	_mantle_time += delta
+	var to_spot := _mantle_spot - global_position
+	var across := Vector3(to_spot.x, 0.0, to_spot.z)
+	if across.length() < 0.1 or _mantle_time > MANTLE_TIME_LIMIT:
+		_mantling = false
+		_left_hand.let_go_of_hold()
+		_right_hand.let_go_of_hold()
+		return
+	_release_stretched_hand(_left_hand)
+	_release_stretched_hand(_right_hand)
+	var to_clear := to_spot.y - _torso_bottom + MANTLE_CLEARANCE
+	# Starts over just before clearing it, since the bottom of the torso is round.
+	var over := clampf(1.0 - to_clear / 0.15, 0.0, 1.0)
+	var goal := across.normalized() * minf(across.length() * MANTLE_RESPONSE, mantle_speed) * over
+	goal.y = clampf(to_clear * MANTLE_RESPONSE, -mantle_speed, mantle_speed)
+	apply_central_force((mass * ((goal - linear_velocity) * MANTLE_RESPONSE + Vector3.UP * _gravity)).limit_length(mantle_force))
+
+
+func _release_stretched_hand(hand: PhysicsHand) -> void:
+	if hand.climbing and hand.target.origin.distance_to(hand.climb_point) > MANTLE_HAND_REACH:
+		hand.let_go_of_hold()
 
 
 ## Adds take-off speed, pushing back on whatever's underfoot.

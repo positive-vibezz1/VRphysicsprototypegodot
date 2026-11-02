@@ -536,7 +536,7 @@ outline_size = 12
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 2.8, 6)
 billboard = 1
 pixel_size = 0.004
-text = "CLIMB\nGrip ladders, pipes, red ledges and rock crevices.\nPull down to go up. Let go mid-pull to launch."
+text = "CLIMB\nGrip ladders, pipes, red ledges and rock crevices.\nPull down to go up. Let go mid-pull to launch.\nPress jump while gripping a ledge to mantle over it."
 font_size = 48
 outline_size = 12
 

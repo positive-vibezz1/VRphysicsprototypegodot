@@ -297,6 +297,89 @@ func test_hauling_up_a_wall_and_leaning_over_gets_on_top_of_it() -> void:
 	assert_false(_player.get_node("Legs").disabled, "legs back out")
 
 
+## Stands the player in front of a wall with a lip along its top, with the right hand gripping the lip.
+func _grip_the_top_of_a_wall() -> void:
+	_add_block(Vector3(0, 0.65, 2), Vector3(3, 1.3, 1.4))
+	_add_block(Vector3(0, 1.33, 2.68), Vector3(3, 0.06, 0.1), true)
+	_player.global_position = Vector3(0, 0, 3.05)
+	await wait_physics_frames(5)
+	var on_top := RIGHT_REST
+	on_top.origin = Vector3(0.2, 1.38, -0.33)
+	for i: int in 30:
+		_set_pose(_right, RIGHT_REST.interpolate_with(on_top, float(i + 1) / 30.0))
+		await wait_physics_frames(1)
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	assert_true((_player.get_node("RightHand") as PhysicsHand).climbing, "gripping the lip")
+
+
+func test_jump_while_gripping_a_ledge_mantles_onto_it() -> void:
+	await _grip_the_top_of_a_wall()
+	var hand: PhysicsHand = _player.get_node("RightHand")
+	_right.set_input(&"jump", true)
+	var fastest := 0.0
+	for i: int in 150:
+		await wait_physics_frames(1)
+		fastest = maxf(fastest, _player.linear_velocity.length())
+	assert_almost_eq(_player.global_position.y, 1.3, 0.03, "standing on top of the wall")
+	assert_lt(_player.global_position.z, 2.7, "over the edge of it")
+	assert_gt(_player.global_position.z, 1.3, "and still on it")
+	assert_almost_eq(_player.global_position.x, 0.0, 0.03, "straight over, the way the head faces")
+	assert_lt(fastest, _player.mantle_speed * 1.2, "at the speed of a mantle")
+	assert_false(hand.climbing, "the hand came off the ledge")
+	assert_false((_player.get_node("Legs") as CollisionShape3D).disabled, "legs back out")
+	assert_lt(hand.global_position.distance_to(hand.target.origin), 0.1, "and the hand is back with the controller")
+
+
+func test_mantle_carries_on_if_the_grip_lets_go() -> void:
+	await _grip_the_top_of_a_wall()
+	_right.set_input(&"jump", true)
+	await wait_physics_frames(5)
+	_right.set_input(&"grip", 0.0)
+	await wait_physics_frames(150)
+	assert_almost_eq(_player.global_position.y, 1.3, 0.03)
+
+
+func test_no_mantle_without_room_to_stand_on_top() -> void:
+	_add_block(Vector3(0, 2.3, 2), Vector3(3, 1, 1.4))
+	await _grip_the_top_of_a_wall()
+	var height := _player.global_position.y
+	_right.set_input(&"jump", true)
+	await wait_physics_frames(60)
+	assert_almost_eq(_player.global_position.y, height, 0.1, "the wall's top is under a ceiling")
+	assert_true((_player.get_node("RightHand") as PhysicsHand).climbing, "so the hand stays on")
+
+
+func test_no_mantle_from_a_hold_partway_up_a_wall() -> void:
+	_add_block(Vector3(0, 3, 2), Vector3(3, 6, 1.4))
+	_add_block(Vector3(0, 1.33, 2.68), Vector3(3, 0.06, 0.1), true)
+	_player.global_position = Vector3(0, 0, 3.05)
+	await wait_physics_frames(5)
+	var on_hold := RIGHT_REST
+	on_hold.origin = Vector3(0.2, 1.38, -0.28)
+	for i: int in 30:
+		_set_pose(_right, RIGHT_REST.interpolate_with(on_hold, float(i + 1) / 30.0))
+		await wait_physics_frames(1)
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	var hand: PhysicsHand = _player.get_node("RightHand")
+	assert_true(hand.climbing)
+	_right.set_input(&"jump", true)
+	await wait_physics_frames(60)
+	assert_lt(_player.global_position.y, 0.3, "nothing to stand on up there")
+	assert_true(hand.climbing)
+
+
+func test_no_mantle_from_a_bar_in_the_open() -> void:
+	_bar_at_right_hand()
+	await wait_physics_frames(10)
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	_right.set_input(&"jump", true)
+	await wait_physics_frames(30)
+	assert_true((_player.get_node("RightHand") as PhysicsHand).climbing)
+
+
 func test_walking_up_a_ramp_and_standing_on_it() -> void:
 	var ramp_top_y := 2.0
 	_player.global_position = Vector3(-3, 0.5, 8.2)
