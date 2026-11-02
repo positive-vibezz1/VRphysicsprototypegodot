@@ -11,8 +11,8 @@ const SCENES := {
 ## Camera direction per view, in the gun's frame (muzzle toward -Z, right side +X), and what fraction of the
 ## frame width the gun's longest axis fills.
 const VIEWS: Array[Array] = [
-	[Vector3(1.0, 0.15, 0.0), 0.85], [Vector3(-1.0, 0.15, 0.0), 0.85],
-	[Vector3(0.8, 0.8, -1.0), 0.75], [Vector3(0.9, 0.6, 1.0), 0.75],
+	[Vector3(1.0, 0.15, 0.0), 0.7], [Vector3(-1.0, 0.15, 0.0), 0.7],
+	[Vector3(0.8, 0.8, -1.0), 0.6], [Vector3(0.9, 0.6, 1.0), 0.6],
 ]
 
 
@@ -52,11 +52,13 @@ func _initialize() -> void:
 		var gun: Gun = load(SCENES[gun_name]).instantiate()
 		stage.add_child(gun)
 		gun.process_mode = Node.PROCESS_MODE_DISABLED
+		# The gun's _ready runs on the first frame, so its @onready bodies exist only after it.
+		await process_frame
 		if open:
 			for body: RigidBody3D in [gun.bolt, gun.charging_handle]:
 				if body:
 					body.position.z += gun.bolt_travel
-		await process_frame
+			await process_frame
 		var bounds := _bounds(gun)
 		var aspect := float(root.size.x) / float(root.size.y)
 		var half_width := tan(deg_to_rad(camera.fov * 0.5)) * aspect
