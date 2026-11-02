@@ -325,8 +325,8 @@ func test_the_whole_hand_stops_at_a_table() -> void:
 	add_child_autofree(table)
 	table.global_position = Vector3(150, 100, 0)
 	var top := 100.1
-	# Fingers straight down: the fingertips reach about 9 cm below the palm.
-	var fingers_down := Basis(Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1))
+	# Fingers straight down: the fingertips reach about 13 cm below the palm.
+	var fingers_down := Basis(Vector3.RIGHT, deg_to_rad(-45.0))
 	var above := Vector3(150, top + 0.3, 0)
 	var hand := _hand(above)
 	hand.set_target(Transform3D(fingers_down, above))
@@ -335,8 +335,8 @@ func test_the_whole_hand_stops_at_a_table() -> void:
 		hand.set_target(Transform3D(fingers_down, above + Vector3.DOWN * 0.7 * (float(i + 1) / 45.0)))
 		await wait_physics_frames(1)
 	await wait_physics_frames(10)
-	assert_gt(hand.global_position.y, top + 0.07, "fingertips stay on top of the table")
-	assert_lt(hand.global_position.y, top + 0.12, "and the hand did come all the way down")
+	assert_gt(hand.global_position.y, top + 0.09, "fingertips stay on top of the table")
+	assert_lt(hand.global_position.y, top + 0.16, "and the hand did come all the way down")
 
 
 func test_pointing_at_a_gun_shows_a_laser_and_squeezing_brings_it() -> void:

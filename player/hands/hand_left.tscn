@@ -1,0 +1,65 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="PackedScene" path="res://player/hands/Hand_low_L.gltf" id="1"]
+[ext_resource type="Material" path="res://player/hands/glove.tres" id="2"]
+[ext_resource type="Animation" path="res://player/hands/animations/left/Grip.res" id="3"]
+[ext_resource type="Animation" path="res://player/hands/animations/left/Grip 5.res" id="4"]
+
+[sub_resource type="AnimationLibrary" id="library"]
+_data = {
+&"Grip": ExtResource("3"),
+&"Grip 5": ExtResource("4")
+}
+
+[sub_resource type="AnimationNodeAnimation" id="closed_index"]
+animation = &"Grip"
+
+[sub_resource type="AnimationNodeAnimation" id="closed_fingers"]
+animation = &"Grip"
+
+[sub_resource type="AnimationNodeAnimation" id="open"]
+animation = &"Grip 5"
+
+[sub_resource type="AnimationNodeBlend2" id="grip_blend"]
+filter_enabled = true
+filters = ["Armature/Skeleton3D:Little_Distal_L", "Armature/Skeleton3D:Little_Intermediate_L", "Armature/Skeleton3D:Little_Metacarpal_L", "Armature/Skeleton3D:Little_Proximal_L", "Armature/Skeleton3D:Middle_Distal_L", "Armature/Skeleton3D:Middle_Intermediate_L", "Armature/Skeleton3D:Middle_Metacarpal_L", "Armature/Skeleton3D:Middle_Proximal_L", "Armature/Skeleton3D:Ring_Distal_L", "Armature/Skeleton3D:Ring_Intermediate_L", "Armature/Skeleton3D:Ring_Metacarpal_L", "Armature/Skeleton3D:Ring_Proximal_L", "Armature/Skeleton3D:Thumb_Distal_L", "Armature/Skeleton3D:Thumb_Metacarpal_L", "Armature/Skeleton3D:Thumb_Proximal_L", "Armature/Skeleton:Little_Distal_L", "Armature/Skeleton:Little_Intermediate_L", "Armature/Skeleton:Little_Proximal_L", "Armature/Skeleton:Middle_Distal_L", "Armature/Skeleton:Middle_Intermediate_L", "Armature/Skeleton:Middle_Proximal_L", "Armature/Skeleton:Ring_Distal_L", "Armature/Skeleton:Ring_Intermediate_L", "Armature/Skeleton:Ring_Proximal_L", "Armature/Skeleton:Thumb_Distal_L", "Armature/Skeleton:Thumb_Proximal_L"]
+
+[sub_resource type="AnimationNodeBlend2" id="trigger_blend"]
+filter_enabled = true
+filters = ["Armature/Skeleton3D:Index_Distal_L", "Armature/Skeleton3D:Index_Intermediate_L", "Armature/Skeleton3D:Index_Metacarpal_L", "Armature/Skeleton3D:Index_Proximal_L", "Armature/Skeleton:Index_Distal_L", "Armature/Skeleton:Index_Intermediate_L", "Armature/Skeleton:Index_Proximal_L"]
+
+[sub_resource type="AnimationNodeBlendTree" id="fingers"]
+nodes/ClosedFingers/node = SubResource("closed_fingers")
+nodes/ClosedFingers/position = Vector2(-360, 300)
+nodes/ClosedIndex/node = SubResource("closed_index")
+nodes/ClosedIndex/position = Vector2(-600, 300)
+nodes/Grip/node = SubResource("grip_blend")
+nodes/Grip/position = Vector2(0, 20)
+nodes/Open/node = SubResource("open")
+nodes/Open/position = Vector2(-600, 100)
+nodes/Trigger/node = SubResource("trigger_blend")
+nodes/Trigger/position = Vector2(-360, 20)
+node_connections = [&"Grip", 0, &"Trigger", &"Grip", 1, &"ClosedFingers", &"Trigger", 0, &"Open", &"Trigger", 1, &"ClosedIndex", &"output", 0, &"Grip"]
+
+[node name="HandLeft" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 0, 0)
+
+[node name="Hand_low_L" parent="." instance=ExtResource("1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.01, 0, 0.05)
+
+[node name="mesh_Hand_low_L" parent="Hand_low_L/Armature/Skeleton3D" index="0"]
+surface_material_override/0 = ExtResource("2")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="Hand_low_L"]
+libraries = {
+"": SubResource("library")
+}
+
+[node name="AnimationTree" type="AnimationTree" parent="."]
+root_node = NodePath("../Hand_low_L")
+tree_root = SubResource("fingers")
+anim_player = NodePath("../Hand_low_L/AnimationPlayer")
+parameters/Grip/blend_amount = 0.0
+parameters/Trigger/blend_amount = 0.0
+
+[editable path="Hand_low_L"]

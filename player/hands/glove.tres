@@ -1,0 +1,11 @@
+[gd_resource type="ORMMaterial3D" load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://player/hands/glove_occlusionRoughnessMetallic.png" id="1"]
+[ext_resource type="Texture2D" path="res://player/hands/glove_normal.png" id="2"]
+
+[resource]
+albedo_color = Color(0.13, 0.14, 0.13, 1)
+orm_texture = ExtResource("1")
+normal_enabled = true
+normal_scale = 0.3
+normal_texture = ExtResource("2")

@@ -9,6 +9,7 @@ extends RigidBody3D
 ## Grip squeeze hysteresis.
 const GRIP_ON := 0.6
 const GRIP_OFF := 0.4
+const TRIGGER_FINGER_REST := 0.4
 ## Largest stiffness * dt^2 / inertia that stays well damped in Jolt's semi-implicit integration.
 const MAX_STEP_STIFFNESS := 0.4
 
@@ -27,6 +28,8 @@ const MAX_STEP_STIFFNESS := 0.4
 @export var two_hand_wrist_scale := 0.25
 ## Past this distance from the controller the hand lets go and jumps back.
 @export var max_separation := 0.7
+## The visible hand. Its fingers follow the grip and trigger.
+@export var model_scene: PackedScene
 ## Force a fully squeezed trigger puts on the gun's trigger, about 10 lb.
 @export var max_finger_force := 45.0
 ## Pointing at a gun or magazine this close shows a laser, and squeezing brings it to the hand.
@@ -48,6 +51,7 @@ var input_trigger := 0.0
 var input_mag_release := false
 var input_bolt_button := false
 
+var _fingers: AnimationTree
 var _joint: Joint3D
 ## Inertia of hand and held parts about the palm, along the held body's axes. Set when grabbing.
 var _carried_inertia := Vector3.ZERO
@@ -62,6 +66,10 @@ var _was_bolt_button := false
 
 func _ready() -> void:
 	body_entered.connect(_on_touched)
+	if model_scene:
+		var model := model_scene.instantiate()
+		add_child(model)
+		_fingers = model.get_node("AnimationTree")
 
 
 func set_target(pose: Transform3D) -> void:
@@ -78,6 +86,11 @@ func _physics_process(delta: float) -> void:
 	_update_remote_target()
 	_update_grab()
 	_update_held_controls()
+	if _fingers:
+		_fingers.set("parameters/Grip/blend_amount", 1.0 if held else input_grip)
+		# On a firing grip the index finger rests on the trigger instead of pointing over the slide.
+		var on_trigger := held != null and held.owner is Gun and held == (held.owner as Gun).grip
+		_fingers.set("parameters/Trigger/blend_amount", lerpf(TRIGGER_FINGER_REST, 1.0, input_trigger) if on_trigger else input_trigger)
 
 
 func _track(delta: float) -> void:
