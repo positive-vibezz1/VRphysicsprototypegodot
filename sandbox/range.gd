@@ -7,6 +7,7 @@ const COMMON_CONTROLS := """Grip: grab. Point at a gun or mag up to 1.5 m away, 
 Trigger: fire. Free hand on the slide or charging handle: rack.
 Grip a ladder, pipe, red ledge or crevice: climb. Jump on a ledge: mantle.
 Trigger on an empty hand, at the dot: grapple. Pull your arm back to haul.
+Walk into the water or thin air box to hear what they do to sound.
 """
 const FRAME_CONTROLS := COMMON_CONTROLS + """A or D-pad down: drop mag. B or D-pad right: fire mode. X or D-pad left: bolt release.
 Y or D-pad up: bullet time, on and off. The bar on your left hand is what's left of it.
