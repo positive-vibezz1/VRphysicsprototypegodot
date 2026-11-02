@@ -568,6 +568,63 @@ func test_game_only_reads_actions_in_the_map() -> void:
 		assert_has(names, match_result.get_string(1))
 
 
+## Moves a controller at human speed to a world position.
+func _reach(tracker: XRControllerTracker, from: Transform3D, goal: Vector3) -> void:
+	var origin: Node3D = _player.get_node("XROrigin3D")
+	var pose := from
+	var start := from.origin
+	for i: int in 30:
+		pose.origin = start.lerp(origin.to_local(goal), float(i + 1) / 30.0)
+		_set_pose(tracker, pose)
+		await wait_physics_frames(1)
+
+
+func test_carrying_the_ar_in_two_hands_while_running_and_jumping() -> void:
+	_player.global_position = Vector3(0.3, 0, 0)
+	var ar: Gun = _range.get_node("AR")
+	var right: PhysicsHand = _player.get_node("RightHand")
+	var left: PhysicsHand = _player.get_node("LeftHand")
+	await wait_physics_frames(30)
+	await _reach(_right, RIGHT_REST, ar.grip.global_position + Vector3(0, 0.08, 0))
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	assert_eq(right.held, ar.grip, "main hand takes the grip")
+
+	var origin: Node3D = _player.get_node("XROrigin3D")
+	var raised := Transform3D(RIGHT_REST.basis, origin.to_local(right.global_position))
+	await _reach(_right, raised, origin.to_global(RIGHT_REST.origin))
+	await wait_physics_frames(30)
+	var spot: GrabPoint = ar.frame.get_node("Handguard2")
+	await _reach(_left, LEFT_REST, spot.global_position + Vector3(-0.03, -0.03, 0))
+	_left.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	assert_eq(left.held, spot, "off hand takes a handguard spot")
+
+	_left.set_input(&"primary", Vector2(0, -1))
+	_left.set_input(&"sprint", true)
+	await wait_physics_frames(60)
+	_right.set_input(&"jump", true)
+	await wait_physics_frames(5)
+	_right.set_input(&"jump", false)
+	await wait_physics_frames(50)
+	assert_gt(_player.global_position.z, 1.0, "the player did run")
+	assert_eq(right.held, ar.grip, "main hand still holding")
+	assert_eq(left.held, spot, "off hand still holding")
+	assert_almost_eq(ar.grip.global_position.distance_to(right.global_position), 0.0, 0.03, "grip stays in the fist")
+	assert_almost_eq(spot.global_position.distance_to(left.global_position), 0.0, 0.03, "handguard stays in the other")
+
+	watch_signals(ar)
+	_right.set_input(&"trigger", 1.0)
+	await wait_physics_frames(3)
+	_right.set_input(&"trigger", 0.0)
+	assert_signal_emitted(ar, "shot_fired", "fires on the run")
+	await wait_physics_frames(30)
+	assert_eq(right.held, ar.grip, "main hand holds through the shot")
+	assert_eq(left.held, spot, "off hand holds through the shot")
+	_left.set_input(&"primary", Vector2.ZERO)
+	_left.set_input(&"sprint", false)
+
+
 func test_small_stick_input_is_ignored() -> void:
 	await wait_physics_frames(10)
 	var start := _player.global_position
