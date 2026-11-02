@@ -4,9 +4,13 @@ extends CharacterBody3D
 
 const KNOWN_REFRESH_RATES: Array[int] = [72, 80, 90, 120, 144]
 
-@export var move_speed := 2.5
-@export var turn_speed := 1.75
-@export var stick_deadzone := 0.2
+## A brisk walk, and a run with the left stick clicked in.
+@export var move_speed := 4.0
+@export var sprint_speed := 6.5
+@export var turn_speed := 2.2
+@export var stick_deadzone := 0.15
+## Take-off speed: 3.2 m/s lifts the feet about 50 cm, a good standing jump.
+@export var jump_speed := 3.2
 ## Shoulder position relative to the head, for bracing a stock.
 @export var shoulder_offset := Vector3(0.17, -0.2, 0.06)
 
@@ -14,11 +18,14 @@ var _xr: OpenXRInterface
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _fall_speed := 0.0
 var _was_menu := false
+var _was_jump := false
 
 @onready var _origin: XROrigin3D = $XROrigin3D
 @onready var _camera: XRCamera3D = $XROrigin3D/XRCamera3D
 @onready var _left_controller: XRController3D = $XROrigin3D/LeftController
 @onready var _right_controller: XRController3D = $XROrigin3D/RightController
+@onready var _left_aim: XRController3D = $XROrigin3D/LeftAim
+@onready var _right_aim: XRController3D = $XROrigin3D/RightAim
 @onready var _left_hand: PhysicsHand = $LeftHand
 @onready var _right_hand: PhysicsHand = $RightHand
 @onready var _left_shoulder: AnimatableBody3D = $LeftShoulder
@@ -35,8 +42,8 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_locomote(delta)
-	_update_hand(_left_hand, _left_controller)
-	_update_hand(_right_hand, _right_controller)
+	_update_hand(_left_hand, _left_controller, _left_aim)
+	_update_hand(_right_hand, _right_controller, _right_aim)
 
 	var forward := -_camera.global_basis.z
 	var yaw := Basis(Vector3.UP, atan2(-forward.x, -forward.z))
@@ -58,7 +65,8 @@ func _locomote(delta: float) -> void:
 	forward.y = 0.0
 	forward = forward.normalized()
 	var right := Vector3(-forward.z, 0.0, forward.x)
-	var walk := (right * stick.x + forward * stick.y) * move_speed
+	var speed := sprint_speed if _left_controller.is_button_pressed(&"primary_click") else move_speed
+	var walk := (right * stick.x + forward * stick.y) * speed
 
 	# The capsule follows the head as far as it can, and the view stays put. A blocked capsule just leaves the
 	# head leaning past it, which is what lets you lean over the table.
@@ -71,25 +79,35 @@ func _locomote(delta: float) -> void:
 	followed.y = 0.0
 	_origin.global_position -= followed
 
-	_fall_speed = 0.0 if is_on_floor() else _fall_speed - _gravity * delta
+	# Jump with the right stick: click it, or flick it up.
+	var jump := _right_controller.is_button_pressed(&"primary_click") or _right_controller.get_vector2(&"primary").y > 0.8
+	if is_on_floor():
+		_fall_speed = jump_speed if jump and not _was_jump else 0.0
+	else:
+		_fall_speed -= _gravity * delta
+	_was_jump = jump
 	velocity = walk + Vector3.UP * _fall_speed
 	move_and_slide()
 
 
-func _update_hand(hand: PhysicsHand, controller: XRController3D) -> void:
+func _update_hand(hand: PhysicsHand, controller: XRController3D, aim: XRController3D) -> void:
 	if not controller.get_has_tracking_data():
 		return
 	hand.set_target(controller.global_transform)
+	hand.aim_direction = -aim.global_basis.z if aim.get_has_tracking_data() else Vector3.ZERO
 	hand.input_grip = controller.get_float(&"grip")
 	hand.input_trigger = controller.get_float(&"trigger")
 	hand.input_mag_release = controller.is_button_pressed(&"ax_button")
-	hand.input_bolt_release = controller.is_button_pressed(&"by_button")
-	hand.input_selector = controller.is_button_pressed(&"primary_click")
+	hand.input_bolt_button = controller.is_button_pressed(&"by_button")
 
 
 func _stick(controller: XRController3D) -> Vector2:
+	# Rescaled so speed starts from zero at the edge of the deadzone, not with a jump.
 	var stick := controller.get_vector2(&"primary")
-	return stick if stick.length() > stick_deadzone else Vector2.ZERO
+	var length := stick.length()
+	if length <= stick_deadzone:
+		return Vector2.ZERO
+	return stick / length * minf((length - stick_deadzone) / (1.0 - stick_deadzone), 1.0)
 
 
 func _start_xr() -> void:

@@ -33,6 +33,14 @@ pose = &"grip"
 tracker = &"right_hand"
 pose = &"grip"
 
+[node name="LeftAim" type="XRController3D" parent="XROrigin3D"]
+tracker = &"left_hand"
+pose = &"aim"
+
+[node name="RightAim" type="XRController3D" parent="XROrigin3D"]
+tracker = &"right_hand"
+pose = &"aim"
+
 [node name="LeftHand" parent="." instance=ExtResource("2")]
 
 [node name="RightHand" parent="." instance=ExtResource("2")]

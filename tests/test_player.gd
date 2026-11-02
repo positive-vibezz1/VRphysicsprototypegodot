@@ -13,6 +13,12 @@ var _player: Player
 var _camera: XRCamera3D
 
 
+## A dud stops a gun until it is racked, which would fail these tests at random. test_fire_control covers duds.
+func before_all() -> void:
+	(load("res://weapons/parts/cartridge_9x19.tres") as CartridgeSpec).dud_chance = 0.0
+	(load("res://weapons/parts/cartridge_556x45.tres") as CartridgeSpec).dud_chance = 0.0
+
+
 func before_each() -> void:
 	_left = _tracker(&"left_hand", LEFT_REST)
 	_right = _tracker(&"right_hand", RIGHT_REST)
@@ -51,9 +57,78 @@ func test_left_stick_walks_where_the_head_looks() -> void:
 	_left.set_input(&"primary", Vector2(0, 1))
 	await wait_physics_frames(45)
 	var moved := _player.global_position - start
-	assert_almost_eq(moved.length(), _player.move_speed * 46.0 * DT, 0.25)
+	assert_almost_eq(moved.length(), _player.move_speed * 46.0 * DT, 0.3)
 	assert_lt(moved.z, 0.0, "forward is -Z here")
 	assert_almost_eq(moved.x, 0.0, 0.01)
+
+
+func test_clicking_the_left_stick_runs() -> void:
+	await wait_physics_frames(10)
+	var start := _player.global_position
+	_left.set_input(&"primary", Vector2(0, 1))
+	_left.set_input(&"primary_click", true)
+	await wait_physics_frames(45)
+	assert_gt((_player.global_position - start).length(), _player.move_speed * 46.0 * DT + 0.5)
+
+
+func test_right_stick_click_jumps_and_lands() -> void:
+	await wait_physics_frames(10)
+	var floor_y := _player.global_position.y
+	_right.set_input(&"primary_click", true)
+	var highest := floor_y
+	for i: int in 70:
+		await wait_physics_frames(1)
+		highest = maxf(highest, _player.global_position.y)
+	assert_between(highest - floor_y, 0.4, 0.65, "a standing jump of about 50 cm")
+	assert_almost_eq(_player.global_position.y, floor_y, 0.02, "held click does not keep jumping")
+
+
+func test_flicking_the_right_stick_up_jumps() -> void:
+	await wait_physics_frames(10)
+	var floor_y := _player.global_position.y
+	_right.set_input(&"primary", Vector2(0, 1))
+	await wait_physics_frames(15)
+	assert_gt(_player.global_position.y, floor_y + 0.2)
+
+
+func test_b_button_moves_the_selector_on_a_held_ar() -> void:
+	_player.global_position = Vector3.ZERO
+	var ar: Gun = _range.get_node("AR")
+	await wait_physics_frames(30)
+	var hand: PhysicsHand = _player.get_node("RightHand")
+	var reach := RIGHT_REST
+	var start := reach.origin
+	var goal := ar.grip.global_position + Vector3(0, 0.08, 0)
+	for i: int in 45:
+		reach.origin = start.lerp(goal, float(i + 1) / 45.0)
+		_set_pose(_right, reach)
+		await wait_physics_frames(1)
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	assert_eq(hand.held, ar.grip)
+	_right.set_input(&"by_button", true)
+	await wait_physics_frames(2)
+	_right.set_input(&"by_button", false)
+	await wait_physics_frames(2)
+	assert_eq(ar.fire_control.selector, FireControl.Selector.BURST)
+	_right.set_input(&"by_button", true)
+	await wait_physics_frames(2)
+	_right.set_input(&"by_button", false)
+	await wait_physics_frames(2)
+	assert_eq(ar.fire_control.selector, FireControl.Selector.AUTO)
+
+
+func test_aim_pose_points_the_laser() -> void:
+	_player.global_position = Vector3.ZERO
+	var pistol: Gun = _range.get_node("Pistol")
+	await wait_physics_frames(30)
+	var hand: PhysicsHand = _player.get_node("RightHand")
+	# Point the aim pose at the pistol from where the hand is resting.
+	var from := hand.global_position
+	var aim_at := Basis.looking_at(from.direction_to(pistol.grip.global_position))
+	_right.set_pose(&"aim", Transform3D(aim_at, RIGHT_REST.origin), Vector3.ZERO, Vector3.ZERO, XRPose.XR_TRACKING_CONFIDENCE_HIGH)
+	await wait_physics_frames(3)
+	assert_eq(hand.remote_target, pistol.grip, "the aim pose picks the target")
 
 
 func test_small_stick_input_is_ignored() -> void:

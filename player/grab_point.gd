@@ -12,13 +12,20 @@ enum Mode { SNAP, PIN }
 @export var half_length := 0.0
 @export var enabled := true
 
+## Every grab point in the scene, so hands can search them each tick without allocating.
+static var all: Array[GrabPoint] = []
+
 var holder: PhysicsHand
 
 @onready var body: RigidBody3D = get_parent()
 
 
-func _ready() -> void:
-	add_to_group(&"grab_points")
+func _enter_tree() -> void:
+	all.append(self)
+
+
+func _exit_tree() -> void:
+	all.erase(self)
 
 
 ## How far outside this point's reach a position is. Negative means in reach.

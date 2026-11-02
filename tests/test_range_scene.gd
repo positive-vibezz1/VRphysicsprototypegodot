@@ -8,6 +8,12 @@ const AIM_GRIP := Basis(Vector3(1, 0, 0), Vector3(0, 0.309017, 0.951057), Vector
 var _range: Node3D
 
 
+## A dud stops a gun until it is racked, which would fail these tests at random. test_fire_control covers duds.
+func before_all() -> void:
+	(load("res://weapons/parts/cartridge_9x19.tres") as CartridgeSpec).dud_chance = 0.0
+	(load("res://weapons/parts/cartridge_556x45.tres") as CartridgeSpec).dud_chance = 0.0
+
+
 func before_each() -> void:
 	_range = (load(ProjectSettings.get_setting("application/run/main_scene")) as PackedScene).instantiate()
 	add_child_autofree(_range)

@@ -9,6 +9,12 @@ const LEVEL_GRIP := Basis(Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(0, -1, 0))
 var _shots := 0
 
 
+## A dud stops a gun until it is racked, which would fail these tests at random. test_fire_control covers duds.
+func before_all() -> void:
+	(load("res://weapons/parts/cartridge_9x19.tres") as CartridgeSpec).dud_chance = 0.0
+	(load("res://weapons/parts/cartridge_556x45.tres") as CartridgeSpec).dud_chance = 0.0
+
+
 func before_each() -> void:
 	_shots = 0
 	Ballistics.pool.clear()
@@ -125,6 +131,29 @@ func test_pistol_recoil_moves_the_hand_and_it_comes_back() -> void:
 	assert_eq(hand.held, gun.grip, "still holding on")
 
 
+func test_pistol_fires_pointing_straight_up_and_down() -> void:
+	for pitch: float in [PI * 0.5, -PI * 0.5]:
+		var at := Vector3(190 + pitch, 100, 0)
+		var gun := _gun(PISTOL_SCENE, at)
+		var hand := _hand(at)
+		await wait_physics_frames(2)
+		_hold(hand, gun.grip)
+		await wait_physics_frames(2)
+		var aimed := Basis(Vector3.RIGHT, pitch - deg_to_rad(18.0)) * LEVEL_GRIP
+		for i: int in 40:
+			hand.set_target(Transform3D(LEVEL_GRIP.slerp(aimed, float(i + 1) / 40.0), at))
+			await wait_physics_frames(1)
+		await wait_physics_frames(45)
+		assert_lt(gun._rail.travel, gun.BATTERY_TOLERANCE, "slide stays in battery under its own weight")
+		var before := _shots
+		hand.input_trigger = 1.0
+		await wait_physics_frames(3)
+		hand.input_trigger = 0.0
+		assert_eq(_shots, before + 1, "and it fires")
+		hand.input_grip = 0.0
+		await wait_physics_frames(1)
+
+
 func test_support_hand_can_rack_the_slide() -> void:
 	var at := Vector3(60, 100, 0)
 	var gun := _gun(PISTOL_SCENE, at)
@@ -224,6 +253,139 @@ func _ar_kick(at: Vector3, braced: bool) -> float:
 	primary.input_grip = 0.0
 	await wait_physics_frames(1)
 	return furthest
+
+
+func _peak_recoil(scene: PackedScene, at: Vector3) -> Dictionary:
+	var pose := Transform3D(LEVEL_GRIP * Basis(Vector3.RIGHT, deg_to_rad(18.0)), at)
+	var gun := _gun(scene, at)
+	var hand := _hand(at)
+	hand.set_target(pose)
+	await wait_physics_frames(2)
+	_hold(hand, gun.grip)
+	await wait_physics_frames(60)
+	var start := gun.frame.global_position
+	var forward := -gun.frame.global_basis.z
+	var result := {"move": 0.0, "flip": 0.0, "peak_tick": 0}
+	hand.input_trigger = 1.0
+	for i: int in 30:
+		await wait_physics_frames(1)
+		hand.input_trigger = 0.0
+		var moved := (gun.frame.global_position - start).length()
+		if moved > result["move"]:
+			result["move"] = moved
+			result["peak_tick"] = i
+		result["flip"] = maxf(result["flip"], rad_to_deg(forward.angle_to(-gun.frame.global_basis.z)))
+	hand.input_grip = 0.0
+	await wait_physics_frames(1)
+	return result
+
+
+func test_pistol_snaps_and_the_ar_shoves() -> void:
+	var pistol := await _peak_recoil(PISTOL_SCENE, Vector3(110, 100, 0))
+	var ar := await _peak_recoil(AR_SCENE, Vector3(120, 100, 0))
+	assert_gt(pistol["flip"], ar["flip"] * 1.4, "the light pistol flips more")
+	assert_gt(ar["move"], pistol["move"] * 1.3, "the heavy rifle comes back further")
+	assert_lt(pistol["peak_tick"], ar["peak_tick"], "and the pistol kick is over sooner")
+
+
+func test_a_heavy_gun_lags_behind_a_swing_more_than_a_light_one() -> void:
+	var pistol_lag := await _swing_lag(PISTOL_SCENE, Vector3(130, 100, 0))
+	var ar_lag := await _swing_lag(AR_SCENE, Vector3(140, 100, 0))
+	assert_gt(pistol_lag, 0.002, "even the pistol lags a little")
+	assert_gt(ar_lag, pistol_lag * 1.8, "the AR lags far more")
+	assert_lt(ar_lag, 0.3, "without dropping out of the hand")
+
+
+## Sweeps the hand 60 cm in a third of a second and returns how far it fell behind.
+func _swing_lag(scene: PackedScene, at: Vector3) -> float:
+	var gun := _gun(scene, at)
+	var hand := _hand(at)
+	await wait_physics_frames(2)
+	_hold(hand, gun.grip)
+	await wait_physics_frames(30)
+	var worst := 0.0
+	for i: int in 30:
+		var t := float(i + 1) / 30.0
+		var pose := Transform3D(LEVEL_GRIP, at + Vector3.RIGHT * 0.6 * t * t * (3.0 - 2.0 * t))
+		hand.set_target(pose)
+		await wait_physics_frames(1)
+		worst = maxf(worst, (hand.global_position - pose.origin).length())
+	hand.input_grip = 0.0
+	await wait_physics_frames(1)
+	return worst
+
+
+func test_the_whole_hand_stops_at_a_table() -> void:
+	var table := StaticBody3D.new()
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(2, 0.2, 2)
+	shape.shape = box
+	table.add_child(shape)
+	add_child_autofree(table)
+	table.global_position = Vector3(150, 100, 0)
+	var top := 100.1
+	# Fingers straight down: the fingertips reach about 9 cm below the palm.
+	var fingers_down := Basis(Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1))
+	var above := Vector3(150, top + 0.3, 0)
+	var hand := _hand(above)
+	hand.set_target(Transform3D(fingers_down, above))
+	await wait_physics_frames(30)
+	for i: int in 45:
+		hand.set_target(Transform3D(fingers_down, above + Vector3.DOWN * 0.7 * (float(i + 1) / 45.0)))
+		await wait_physics_frames(1)
+	await wait_physics_frames(10)
+	assert_gt(hand.global_position.y, top + 0.07, "fingertips stay on top of the table")
+	assert_lt(hand.global_position.y, top + 0.12, "and the hand did come all the way down")
+
+
+func test_pointing_at_a_gun_shows_a_laser_and_squeezing_brings_it() -> void:
+	var at := Vector3(160, 100, 0)
+	var gun := _gun(PISTOL_SCENE, at + Vector3(0, 0, -1.2))
+	var hand := _hand(at)
+	await wait_physics_frames(2)
+	var laser: MeshInstance3D = hand.get_node("Laser")
+	hand.aim_direction = at.direction_to(gun.grip.global_position)
+	await wait_physics_frames(2)
+	assert_eq(hand.remote_target, gun.grip, "picked out by pointing")
+	assert_true(laser.visible, "laser shows")
+	assert_almost_eq((laser.global_position - at).length(), at.distance_to(gun.grip.global_position) * 0.5, 0.02, "laser spans the gap")
+	hand.input_grip = 1.0
+	await wait_physics_frames(3)
+	assert_eq(hand.held, gun.grip, "squeeze takes it")
+	assert_almost_eq(gun.grip.global_position.distance_to(hand.global_position), 0.0, 0.03, "and it is in the hand")
+	assert_false(laser.visible, "no laser while holding")
+
+
+func test_no_laser_when_pointing_away_or_out_of_range() -> void:
+	var at := Vector3(170, 100, 0)
+	var gun := _gun(PISTOL_SCENE, at + Vector3(0, 0, -1.2))
+	var far := _gun(PISTOL_SCENE, at + Vector3(2.5, 0, 0))
+	var hand := _hand(at)
+	await wait_physics_frames(2)
+	hand.aim_direction = at.direction_to(gun.grip.global_position) * -1.0
+	await wait_physics_frames(2)
+	assert_null(hand.remote_target, "pointing the other way")
+	hand.aim_direction = at.direction_to(far.grip.global_position)
+	await wait_physics_frames(2)
+	assert_null(hand.remote_target, "2.5 m away is too far")
+	hand.input_grip = 1.0
+	await wait_physics_frames(3)
+	assert_null(hand.held, "squeezing at nothing picks nothing up")
+
+
+func test_laser_does_not_offer_a_part_of_a_gun() -> void:
+	var at := Vector3(180, 100, 0)
+	var gun := _gun(PISTOL_SCENE, at + Vector3(0, 0, -1.2))
+	var hand := _hand(at)
+	var other := _hand(gun.grip.global_position)
+	await wait_physics_frames(2)
+	_hold(other, gun.grip)
+	await wait_physics_frames(2)
+	var slide: GrabPoint = gun.bolt.get_node("SlideGrab")
+	hand.aim_direction = at.direction_to(slide.global_position)
+	await wait_physics_frames(2)
+	assert_ne(hand.remote_target, slide, "the slide needs a hand on it")
 
 
 func test_hand_drops_what_it_holds_when_pulled_too_far_away() -> void:

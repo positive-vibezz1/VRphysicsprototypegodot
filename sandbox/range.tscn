@@ -120,9 +120,10 @@ surface_material_override/0 = SubResource("wood")
 [node name="Readout" type="Label3D" parent="Table"]
 transform = Transform3D(1, 0, 0, 0, 0.866, 0.5, 0, -0.5, 0.866, 0, 0.75, -0.45)
 pixel_size = 0.0012
-text = "Pick up a gun: grip button. Fire: trigger.
-Rack: free hand grabs slide or charging handle.
-A/X: drop mag. B/Y: bolt release. Stick click: selector. Menu: reset."
+text = "Grip: grab. Point at a gun or mag up to 1.5 m away, then grip, to pull it to you.
+Trigger: fire. Free hand on the slide or charging handle: rack.
+A/X: drop mag. B/Y: fire mode (semi, burst, auto, safe), or bolt release when locked back.
+Left stick: move, click to run. Right stick: turn, click or flick up to jump. Menu: reset."
 font_size = 36
 outline_size = 6
 
