@@ -52,6 +52,10 @@ var input_mag_release := false
 var input_bolt_button := false
 
 var _fingers: AnimationTree
+var _model: Node3D
+var _model_base := Transform3D.IDENTITY
+## How far the visible hand sits from the tracked controller pose, set by the player's hand fit.
+var _fit := Transform3D.IDENTITY
 var _joint: Joint3D
 ## Inertia of hand and held parts about the palm, along the held body's axes. Set when grabbing.
 var _carried_inertia := Vector3.ZERO
@@ -67,9 +71,17 @@ var _was_bolt_button := false
 func _ready() -> void:
 	body_entered.connect(_on_touched)
 	if model_scene:
-		var model := model_scene.instantiate()
-		add_child(model)
-		_fingers = model.get_node("AnimationTree")
+		_model = model_scene.instantiate()
+		add_child(_model)
+		_model_base = _model.transform
+		_fingers = _model.get_node("AnimationTree")
+
+
+## Moves the visible hand relative to the controller. What it picks up goes into the visible hand too.
+func set_fit(fit: Transform3D) -> void:
+	_fit = fit
+	if _model:
+		_model.transform = fit * _model_base
 
 
 func set_target(pose: Transform3D) -> void:
@@ -213,7 +225,7 @@ func grab(point: GrabPoint) -> void:
 	held = point
 	point.holder = self
 	if point.mode == GrabPoint.Mode.SNAP:
-		point.snap_to(global_transform)
+		point.snap_to(global_transform * _fit)
 		_joint = Generic6DOFJoint3D.new()
 	else:
 		_joint = PinJoint3D.new()

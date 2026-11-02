@@ -131,6 +131,72 @@ func test_aim_pose_points_the_laser() -> void:
 	assert_eq(hand.remote_target, pistol.grip, "the aim pose picks the target")
 
 
+func _hold_fit_buttons() -> void:
+	_left.set_input(&"ax_button", true)
+	_left.set_input(&"by_button", true)
+	await wait_physics_frames(95)
+	_left.set_input(&"ax_button", false)
+	_left.set_input(&"by_button", false)
+	await wait_physics_frames(2)
+
+
+func test_hand_fit_moves_the_hands_and_comes_back_next_time() -> void:
+	_player.fit_path = "user://test_hand_fit.cfg"
+	await wait_physics_frames(10)
+	var model: Node3D = _player.get_node("RightHand").find_child("HandRight", true, false)
+	var left_model: Node3D = _player.get_node("LeftHand").find_child("HandLeft", true, false)
+	var start := model.position
+	var left_start := left_model.position
+	var label: Label3D = _player.get_node("LeftHand/FitLabel")
+	assert_false(label.visible)
+
+	await _hold_fit_buttons()
+	assert_true(label.visible, "holding X and Y enters the mode")
+
+	var standing := _player.global_position
+	_left.set_input(&"primary", Vector2(1, 0.5))
+	_right.set_input(&"primary", Vector2(0.5, 1))
+	await wait_physics_frames(45)
+	_left.set_input(&"primary", Vector2.ZERO)
+	_right.set_input(&"primary", Vector2.ZERO)
+	await wait_physics_frames(2)
+	assert_almost_eq((_player.global_position - standing).length(), 0.0, 0.01, "sticks don't walk in this mode")
+	assert_almost_eq(_player.global_position.y, standing.y, 0.01, "and don't jump")
+	assert_gt(model.position.x, start.x + 0.005, "right hand moved outward")
+	assert_lt(left_model.position.x, left_start.x - 0.005, "left hand mirrors it")
+	var fitted := model.transform
+
+	await _hold_fit_buttons()
+	assert_false(label.visible, "holding again leaves the mode")
+	await wait_physics_frames(2)
+	_left.set_input(&"primary", Vector2(0, 1))
+	var before_walk := _player.global_position
+	await wait_physics_frames(10)
+	assert_gt((_player.global_position - before_walk).length(), 0.1, "sticks walk again")
+	_left.set_input(&"primary", Vector2.ZERO)
+
+	var next_time: Player = (load("res://player/player.tscn") as PackedScene).instantiate()
+	next_time.fit_path = _player.fit_path
+	add_child_autofree(next_time)
+	var reloaded: Node3D = next_time.get_node("RightHand").find_child("HandRight", true, false)
+	assert_true(reloaded.transform.is_equal_approx(fitted), "the fit is remembered")
+	DirAccess.remove_absolute(_player.fit_path)
+
+
+func test_a_gun_goes_into_the_fitted_hand() -> void:
+	_player.global_position = Vector3.ZERO
+	var pistol: Gun = _range.get_node("Pistol")
+	var hand: PhysicsHand = _player.get_node("RightHand")
+	var fit := Transform3D(Basis.IDENTITY, Vector3(0.02, -0.03, 0.01))
+	hand.set_fit(fit)
+	await wait_physics_frames(30)
+	hand.set_target(Transform3D(RIGHT_REST.basis, pistol.grip.global_position + Vector3(0, 0.08, 0)))
+	hand.grab(pistol.grip)
+	var expected: Vector3 = (hand.global_transform * fit).origin
+	assert_almost_eq(pistol.grip.global_position.distance_to(expected), 0.0, 0.001)
+	hand.release()
+
+
 func test_small_stick_input_is_ignored() -> void:
 	await wait_physics_frames(10)
 	var start := _player.global_position

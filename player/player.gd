@@ -5,6 +5,10 @@ extends CharacterBody3D
 const KNOWN_REFRESH_RATES: Array[int] = [72, 80, 90, 120, 144]
 ## How often to re-measure the refresh rate on a runtime that doesn't report it.
 const RATE_CHECK_INTERVAL := 3.0
+## Hand fit mode: hold X and Y on an empty left hand this long to enter or leave it.
+const FIT_HOLD_TIME := 1.0
+const FIT_MOVE_SPEED := 0.04
+const FIT_TILT_SPEED := 30.0
 
 ## A brisk walk, and a run with the left stick clicked in.
 @export var move_speed := 4.0
@@ -16,6 +20,9 @@ const RATE_CHECK_INTERVAL := 3.0
 ## Shoulder position relative to the head, for bracing a stock.
 @export var shoulder_offset := Vector3(0.17, -0.2, 0.06)
 
+## Where the hand fit is kept, so it only has to be set once.
+var fit_path := "user://hand_fit.cfg"
+
 var _xr: OpenXRInterface
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _fall_speed := 0.0
@@ -23,6 +30,10 @@ var _was_menu := false
 var _was_jump := false
 var _measure_rate := false
 var _rate_check_time := 0.0
+var _fit_mode := false
+var _fit_hold := 0.0
+var _fit_offset := Vector3.ZERO
+var _fit_tilt := 0.0
 
 @onready var _origin: XROrigin3D = $XROrigin3D
 @onready var _camera: XRCamera3D = $XROrigin3D/XRCamera3D
@@ -34,6 +45,7 @@ var _rate_check_time := 0.0
 @onready var _right_hand: PhysicsHand = $RightHand
 @onready var _left_shoulder: AnimatableBody3D = $LeftShoulder
 @onready var _right_shoulder: AnimatableBody3D = $RightShoulder
+@onready var _fit_label: Label3D = $LeftHand/FitLabel
 
 
 func _ready() -> void:
@@ -41,6 +53,7 @@ func _ready() -> void:
 	_right_hand.other_hand = _left_hand
 	_left_hand.controller = _left_controller
 	_right_hand.controller = _right_controller
+	_load_fit()
 	_start_xr()
 
 
@@ -50,6 +63,7 @@ func _physics_process(delta: float) -> void:
 		if _rate_check_time >= RATE_CHECK_INTERVAL:
 			_rate_check_time = 0.0
 			set_tick_rate(_nearest_refresh_rate(Engine.get_frames_per_second()))
+	_update_fit(delta)
 	_locomote(delta)
 	_update_hand(_left_hand, _left_controller, _left_aim)
 	_update_hand(_right_hand, _right_controller, _right_aim)
@@ -89,7 +103,7 @@ func _locomote(delta: float) -> void:
 	_origin.global_position -= followed
 
 	# Jump with the right stick: click it, or flick it up.
-	var jump := _right_controller.is_button_pressed(&"primary_click") or _right_controller.get_vector2(&"primary").y > 0.8
+	var jump := not _fit_mode and (_right_controller.is_button_pressed(&"primary_click") or _right_controller.get_vector2(&"primary").y > 0.8)
 	if is_on_floor():
 		_fall_speed = jump_speed if jump and not _was_jump else 0.0
 	else:
@@ -110,13 +124,67 @@ func _update_hand(hand: PhysicsHand, controller: XRController3D, aim: XRControll
 	hand.input_bolt_button = controller.is_button_pressed(&"by_button")
 
 
+## Hand fit mode takes the sticks away from walking and turning.
 func _stick(controller: XRController3D) -> Vector2:
+	return Vector2.ZERO if _fit_mode else _deadzoned(controller)
+
+
+func _deadzoned(controller: XRController3D) -> Vector2:
 	# Rescaled so speed starts from zero at the edge of the deadzone, not with a jump.
 	var stick := controller.get_vector2(&"primary")
 	var length := stick.length()
 	if length <= stick_deadzone:
 		return Vector2.ZERO
 	return stick / length * minf((length - stick_deadzone) / (1.0 - stick_deadzone), 1.0)
+
+
+## Controller poses differ between runtimes and headsets, and only the person wearing it can see how far off the
+## hands are, so the fit is set in the headset. Left stick: side and forward. Right stick: up and tilt.
+func _update_fit(delta: float) -> void:
+	var held_down := _left_controller.is_button_pressed(&"ax_button") and _left_controller.is_button_pressed(&"by_button")
+	if not held_down or _left_hand.held:
+		_fit_hold = 0.0
+	elif _fit_hold >= 0.0:
+		_fit_hold += delta
+		if _fit_hold >= FIT_HOLD_TIME:
+			# Negative until the buttons come up, so one long press only toggles once.
+			_fit_hold = -1.0
+			_fit_mode = not _fit_mode
+			_fit_label.visible = _fit_mode
+			if not _fit_mode:
+				_save_fit()
+	if _fit_mode:
+		var left := _deadzoned(_left_controller)
+		var right := _deadzoned(_right_controller)
+		_fit_offset += Vector3(left.x, -left.y, -right.y) * FIT_MOVE_SPEED * delta
+		_fit_tilt += right.x * FIT_TILT_SPEED * delta
+		_apply_fit()
+		_fit_label.text = "HAND FIT\nLeft stick: side, forward\nRight stick: up, tilt\nHold X+Y: save\n%.3f, %.3f, %.3f   tilt %.0f" % [
+			_fit_offset.x, _fit_offset.y, _fit_offset.z, _fit_tilt
+		]
+
+
+## Mirrored side to side, so the same fit suits both hands.
+func _apply_fit() -> void:
+	var tilt := Basis(Vector3.RIGHT, deg_to_rad(_fit_tilt))
+	_right_hand.set_fit(Transform3D(tilt, _fit_offset))
+	_left_hand.set_fit(Transform3D(tilt, _fit_offset * Vector3(-1.0, 1.0, 1.0)))
+
+
+func _load_fit() -> void:
+	var config := ConfigFile.new()
+	if config.load(fit_path) == OK:
+		_fit_offset = config.get_value("hands", "offset", Vector3.ZERO)
+		_fit_tilt = config.get_value("hands", "tilt", 0.0)
+		_apply_fit()
+
+
+func _save_fit() -> void:
+	var config := ConfigFile.new()
+	config.set_value("hands", "offset", _fit_offset)
+	config.set_value("hands", "tilt", _fit_tilt)
+	config.save(fit_path)
+	print("Hand fit saved: offset ", _fit_offset, " tilt ", _fit_tilt)
 
 
 func _start_xr() -> void:

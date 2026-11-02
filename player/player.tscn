@@ -46,6 +46,14 @@ pose = &"aim"
 [node name="LeftHand" parent="." instance=ExtResource("2")]
 model_scene = ExtResource("3")
 
+[node name="FitLabel" type="Label3D" parent="LeftHand"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.14)
+visible = false
+billboard = 1
+pixel_size = 0.0006
+font_size = 32
+outline_size = 8
+
 [node name="RightHand" parent="." instance=ExtResource("2")]
 model_scene = ExtResource("4")
 
