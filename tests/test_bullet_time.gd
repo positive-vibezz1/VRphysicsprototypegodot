@@ -148,17 +148,12 @@ func _bullet_after(time_scale: float, world_time: float) -> Vector2:
 	return result
 
 
-func test_bullets_show_as_a_short_thick_streak_only_in_slow_time() -> void:
-	var bullet := Ballistics.pool.fire_bullet(NINE, Vector3(60, 500, 0), Vector3(0, 0, -360))
-	var tracer: Node3D = bullet.get_node("Tracer")
-	assert_almost_eq(tracer.scale.z, 360.0 * 0.006, 0.01)
-	assert_almost_eq(tracer.scale.x, 1.0, 0.001)
-	assert_almost_eq(tracer.position.z, 0.0, 0.001)
+func test_the_streak_shortens_with_the_distance_covered_per_frame() -> void:
 	Engine.time_scale = SLOW
-	await wait_physics_frames(2)
-	assert_lt(tracer.scale.z, 0.3)
-	assert_gt(tracer.scale.x, 2.0)
-	assert_gt(tracer.position.z, 0.0, "trails behind the bullet")
+	await wait_physics_frames(1)
+	var bullet := Ballistics.pool.fire_bullet(NINE, Vector3(60, 500, 0), Vector3(0, 0, -360))
+	await wait_physics_frames(10)
+	assert_almost_eq((bullet.get_node("Tracer") as Node3D).scale.z, 360.0 * SLOW * TICK, 0.02)
 	bullet.park()
 
 

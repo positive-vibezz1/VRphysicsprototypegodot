@@ -45,6 +45,70 @@ func test_bullet_slows_down_in_flight() -> void:
 	assert_between(bullet.linear_velocity.length(), 265.0, 325.0)
 
 
+func test_bullet_falls_under_gravity_as_it_flies() -> void:
+	var from := Vector3(10, 500, 0)
+	var bullet := Ballistics.pool.fire_bullet(NINE, from, Vector3(0, 0, -360))
+	await wait_physics_frames(45)
+	# Half a second: 1.2 m by g t^2 / 2. A tick either way is 10 cm of that.
+	assert_almost_eq(from.y - bullet.global_position.y, 1.2, 0.15)
+	# Under the 4.9 m/s of a fall in a vacuum, since drag works against the fall too: g (1 - exp(-k v t)) / (k v), with k v about 0.4/s.
+	assert_almost_eq(bullet.linear_velocity.y, -4.43, 0.3)
+	assert_almost_eq(bullet.global_position.x, from.x, 0.001, "nothing pushes it sideways")
+	# Slowing from 360 to about 295 m/s over that time, so short of the 180 m it would go at muzzle speed.
+	assert_between(-bullet.global_position.z, 140.0, 170.0)
+
+
+func test_a_bullet_takes_time_to_arrive_and_gets_there_lower_and_slower() -> void:
+	var from := Vector3(20, 500, 0)
+	var wall := _wall(Vector3(20, 500, -50), 0.2)
+	var hits: Array[float] = []
+	var count := func(collider: Object, energy: float) -> void:
+		if collider == wall:
+			hits.append(energy)
+	Ballistics.pool.bullet_hit.connect(count)
+	var bullet := Ballistics.pool.fire_bullet(NINE, from, Vector3(0, 0, -360))
+	# 50 m at about 350 m/s is 0.14 s, or 13 ticks.
+	await wait_physics_frames(9)
+	assert_eq(hits.size(), 0, "still in the air")
+	assert_gt(bullet.global_position.z, -50.0)
+	await wait_physics_frames(8)
+	Ballistics.pool.bullet_hit.disconnect(count)
+	assert_eq(hits.size(), 1, "and now it has arrived")
+	assert_almost_eq(from.y - bullet.global_position.y, 0.10, 0.03, "about 10 cm low")
+	var muzzle_energy := 0.5 * NINE.bullet_mass * 360.0 * 360.0
+	assert_lt(hits[0], muzzle_energy, "with less than it left the muzzle with")
+	assert_gt(hits[0], muzzle_energy * 0.8)
+
+
+func test_the_tracer_trails_the_bullet_from_the_muzzle() -> void:
+	var from := Vector3(30, 500, 0)
+	var bullet := Ballistics.pool.fire_bullet(NINE, from, Vector3(0, 0, -360))
+	var tracer: Node3D = bullet.get_node("Tracer")
+	var mesh: MeshInstance3D = tracer.get_node("Mesh")
+	var bounds: AABB = mesh.transform * mesh.mesh.get_aabb()
+	assert_almost_eq(bounds.position.z, 0.0, 0.001, "starts at the bullet")
+	assert_almost_eq(bounds.end.z, 1.0, 0.001, "and runs back from it")
+	assert_lt(tracer.scale.z, 0.1, "barely out of the muzzle")
+	var flown := 0.0
+	for i: int in 6:
+		await wait_physics_frames(1)
+		flown = bullet.global_position.distance_to(from)
+		assert_lte(tracer.scale.z, maxf(flown, Bullet.MIN_TRACER_LENGTH) + 4.1, "never reaches much past the muzzle")
+	assert_almost_eq(tracer.scale.z, bullet.linear_velocity.length() / 90.0, 0.1, "then covers the path of one tick")
+
+
+func test_the_tracer_looks_the_same_width_from_any_distance() -> void:
+	var camera := Camera3D.new()
+	add_child_autofree(camera)
+	camera.global_position = Vector3(40, 500, 0)
+	camera.make_current()
+	var bullet := Ballistics.pool.fire_bullet(NINE, Vector3(40, 500, -1), Vector3(0, 0, -360))
+	await wait_physics_frames(10)
+	var distance := bullet.global_position.distance_to(camera.global_position)
+	assert_gt(distance, 30.0)
+	assert_almost_eq((bullet.get_node("Tracer") as Node3D).scale.x, distance * bullet.tracer_angle, 0.015)
+
+
 func test_rifle_bullet_does_not_tunnel_through_a_thin_wall() -> void:
 	_wall(Vector3(0, 60, -25), 0.01)
 	var bullet := Ballistics.pool.fire_bullet(RIFLE, Vector3(0, 60, 0), Vector3(0, 0, -900))

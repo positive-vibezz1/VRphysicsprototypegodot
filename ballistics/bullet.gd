@@ -4,14 +4,18 @@ extends RigidBody3D
 
 const AIR_DENSITY := 1.225
 const LIFETIME := 4.0
-const TRACER_TIME := 0.006
 const MIN_TRACER_LENGTH := 0.05
-const SLOW_TRACER_WIDTH := 3.0
+const MIN_TRACER_WIDTH := 0.003
+
+## How wide the tracer's head looks from the player, in radians. About 3 pixels on a headset: the bullet itself is under
+## a pixel past a couple of meters, and a line that thin flickers out.
+@export var tracer_angle := 0.002
 
 var _drag_factor := 0.0
 var _age := 0.0
 var _arriving_velocity := Vector3.ZERO
 var _launched_from := Vector3.ZERO
+var _launch_direction := Vector3.ZERO
 
 @onready var _tracer: Node3D = $Tracer
 
@@ -28,6 +32,7 @@ func launch(cartridge: CartridgeSpec, from: Vector3, velocity: Vector3) -> void:
 	_drag_factor = 0.5 * AIR_DENSITY * cartridge.drag_coefficient * cartridge.bore_area() / cartridge.bullet_mass
 	_age = 0.0
 	_launched_from = from
+	_launch_direction = velocity.normalized()
 	var up := Vector3.UP if absf(velocity.normalized().y) < 0.99 else Vector3.RIGHT
 	global_transform = Transform3D(Basis.looking_at(velocity, up), from)
 	linear_velocity = velocity
@@ -45,14 +50,16 @@ func _physics_process(_delta: float) -> void:
 	_show_tracer(linear_velocity.length())
 
 
-## A streak as long as the bullet goes in 6 ms of real time. In bullet time that shrinks to the bullet and its wake,
-## thick enough to see and trailing behind it.
+## A streak over the path it just covered, which is what the eye sees of something this fast. It tapers back from the
+## bullet, and goes no further back than the muzzle, so it shows where the bullet really is at every frame.
 func _show_tracer(speed: float) -> void:
-	var slowness := Engine.time_scale
-	var length := maxf(speed * TRACER_TIME * slowness, MIN_TRACER_LENGTH)
-	var width := lerpf(SLOW_TRACER_WIDTH, 1.0, slowness)
+	var path := speed * Engine.time_scale / Engine.physics_ticks_per_second
+	var length := clampf(path, MIN_TRACER_LENGTH, maxf(global_position.distance_to(_launched_from), MIN_TRACER_LENGTH))
+	var camera := get_viewport().get_camera_3d()
+	var width := MIN_TRACER_WIDTH
+	if camera:
+		width = maxf(width, global_position.distance_to(camera.global_position) * tracer_angle)
 	_tracer.scale = Vector3(width, width, length)
-	_tracer.position.z = 0.5 * length * (1.0 - slowness)
 
 
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
@@ -61,8 +68,10 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		var energy := 0.5 * mass * (_arriving_velocity.length_squared() - state.linear_velocity.length_squared())
 		if DebugLog.enabled:
 			var collider := state.get_contact_collider_object(0) as Node
-			DebugLog.event("hit", "bullet hit %s %.1f m out, %.0f to %.0f m/s, %.0f J, %.2f N s" % [
-				collider.name if collider else &"?", global_position.distance_to(_launched_from), _arriving_velocity.length(),
+			var flown := global_position - _launched_from
+			DebugLog.event("hit", "bullet hit %s %.1f m out after %.0f ms, %.1f cm off the line it left on, %.0f to %.0f m/s, %.0f J, %.2f N s" % [
+				collider.name if collider else &"?", flown.length(), _age * 1000.0,
+				(flown - _launch_direction * flown.dot(_launch_direction)).length() * 100.0, _arriving_velocity.length(),
 				state.linear_velocity.length(), energy, mass * (_arriving_velocity - state.linear_velocity).length()
 			])
 		Ballistics.pool.on_bullet_hit.call_deferred(

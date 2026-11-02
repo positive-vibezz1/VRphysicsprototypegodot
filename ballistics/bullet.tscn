@@ -5,8 +5,14 @@
 [sub_resource type="SphereShape3D" id="shape"]
 radius = 0.004
 
-[sub_resource type="BoxMesh" id="tracer_mesh"]
-size = Vector3(0.0015, 0.0015, 1)
+[sub_resource type="CylinderMesh" id="tracer_mesh"]
+top_radius = 0.0
+bottom_radius = 0.5
+height = 1.0
+radial_segments = 4
+rings = 1
+cap_top = false
+cap_bottom = false
 
 [sub_resource type="StandardMaterial3D" id="tracer_material"]
 shading_mode = 0
@@ -25,8 +31,10 @@ script = ExtResource("1")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 shape = SubResource("shape")
 
-[node name="Tracer" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+[node name="Tracer" type="Node3D" parent="."]
+
+[node name="Mesh" type="MeshInstance3D" parent="Tracer"]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0.5)
 cast_shadow = 0
 mesh = SubResource("tracer_mesh")
 surface_material_override/0 = SubResource("tracer_material")
