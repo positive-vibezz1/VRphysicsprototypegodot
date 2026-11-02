@@ -14,6 +14,13 @@ const TRIGGER_FINGER_REST := 0.4
 const CLIMBABLE_LAYER := 1024
 ## Largest stiffness * dt^2 / inertia that stays well damped in Jolt's semi-implicit integration.
 const MAX_STEP_STIFFNESS := 0.4
+## A controller changing speed by more than this in one tick lost tracking and found it again, it isn't an arm.
+const MOST_ARM_CHANGE := 3.0
+const MOST_WRIST_CHANGE := 30.0
+## Just under Jolt's 47 rad/s limit, which is what keeps a free gun's parts from flying apart at 72 Hz. Past it a very fast
+## wrist in bullet time falls behind and the arm's own torque catches it up. Handing out more than the body can take
+## would come back as a spin the wrong way when the wrist stops.
+const MOST_SPIN := 45.0
 
 ## Arm stiffness with an empty hand. The tick rate may cap it.
 @export var linear_stiffness := 5000.0
@@ -72,6 +79,8 @@ var _joint: Joint3D
 ## Inertia of hand and held parts about the palm, along the held body's axes. Set when grabbing.
 var _carried_inertia := Vector3.ZERO
 var _previous_goal := Transform3D.IDENTITY
+var _previous_velocity := Vector3.ZERO
+var _previous_spin := Vector3.ZERO
 ## Where this body should sit relative to the controller. A support hand snaps away from the controller to its
 ## spot on the gun, and keeps that offset so grabbing doesn't yank the gun back toward the controller.
 var _hold_offset := Transform3D.IDENTITY
@@ -112,6 +121,7 @@ func _physics_process(delta: float) -> void:
 	if climbing:
 		# The arm couldn't keep up, or the body got stopped by something: the grip fails.
 		if target.origin.distance_to(climb_point) > max_separation:
+			DebugLog.event("hand", "%s lost its grip on the hold, %.2f m from the controller" % [_label(), target.origin.distance_to(climb_point)])
 			let_go_of_hold()
 	elif _target_valid:
 		_track(delta)
@@ -130,29 +140,36 @@ func _track(delta: float) -> void:
 	var goal := target * _hold_offset
 	var to_target := goal.origin - state.transform.origin
 	if to_target.length() > max_separation:
+		DebugLog.event("hand", "%s fell %.2f m behind the controller and jumped back" % [_label(), to_target.length()])
 		release()
 		global_transform = target
 		state.linear_velocity = Vector3.ZERO
 		state.angular_velocity = Vector3.ZERO
 		_previous_goal = target
+		_previous_velocity = Vector3.ZERO
+		_previous_spin = Vector3.ZERO
 		return
 
+	var target_velocity := (goal.origin - _previous_goal.origin) / delta
+	var target_rotation := goal.basis.get_rotation_quaternion()
+	var target_spin := _rotation_vector(target_rotation * _previous_goal.basis.get_rotation_quaternion().inverse()) / delta
+	_keep_up(target_velocity, target_spin)
+
+	# The real length of a tick and not delta, which bullet time shortens, so slowing time doesn't change the arm.
+	var tick := 1.0 / Engine.physics_ticks_per_second
 	var carried := 0.0
 	if held:
 		carried = held.owner.held_mass() if held.mode == GrabPoint.Mode.SNAP else held.body.mass
 
-	var target_velocity := (goal.origin - _previous_goal.origin) / delta
 	var total_mass := mass + carried
 	var stiffness := linear_stiffness / (1.0 + carried / arm_softening_mass)
-	var pull := minf(stiffness, MAX_STEP_STIFFNESS * total_mass / (delta * delta))
+	var pull := minf(stiffness, MAX_STEP_STIFFNESS * total_mass / (tick * tick))
 	var damping := 2.0 * damping_ratio * sqrt(pull * total_mass)
 	var force := pull * to_target + damping * (target_velocity - state.linear_velocity)
 	apply_central_force(force.limit_length(max_force))
 
 	var current_rotation := state.transform.basis.get_rotation_quaternion()
-	var target_rotation := goal.basis.get_rotation_quaternion()
 	var angle_error := _rotation_vector(target_rotation * current_rotation.inverse())
-	var target_spin := _rotation_vector(target_rotation * _previous_goal.basis.get_rotation_quaternion().inverse()) / delta
 	var spin_error := target_spin - state.angular_velocity
 	# Work along the held body's axes: a long AR is much harder to pitch than to roll.
 	var axes := held.body.global_basis if held else state.transform.basis
@@ -160,13 +177,53 @@ func _track(delta: float) -> void:
 	var spin_along := axes.inverse() * spin_error
 	var wrist := angular_stiffness * (two_hand_wrist_scale if _is_steered() else 1.0)
 	var torque := Vector3(
-		_axis_torque(angle_along.x, spin_along.x, wrist, inertia.x + _carried_inertia.x, delta),
-		_axis_torque(angle_along.y, spin_along.y, wrist, inertia.y + _carried_inertia.y, delta),
-		_axis_torque(angle_along.z, spin_along.z, wrist, inertia.z + _carried_inertia.z, delta)
+		_axis_torque(angle_along.x, spin_along.x, wrist, inertia.x + _carried_inertia.x, tick),
+		_axis_torque(angle_along.y, spin_along.y, wrist, inertia.y + _carried_inertia.y, tick),
+		_axis_torque(angle_along.z, spin_along.z, wrist, inertia.z + _carried_inertia.z, tick)
 	)
 	apply_torque((axes * torque).limit_length(max_torque))
 
 	_previous_goal = goal
+
+
+## In bullet time the controller still moves in real time, which in the world's slowed time is far faster than any arm:
+## 1 / time_scale the speed and 1 / time_scale^2 the acceleration. Forces that big would throw a slide out of battery
+## just from waving the gun around. So this hands out the extra as a change of velocity to everything held, as one
+## rigid piece that can't feel it. What's left for the arm's capped force is the same acceleration as at normal speed,
+## so the weight still sags and a recoil still throws the hand just as far, only in slow motion.
+func _keep_up(velocity: Vector3, spin: Vector3) -> void:
+	var slowness := Engine.time_scale
+	var extra := 1.0 - slowness * slowness
+	var linear := (velocity - _previous_velocity) * extra
+	var capped_spin := spin.limit_length(MOST_SPIN)
+	var turn := (capped_spin - _previous_spin) * extra
+	_previous_velocity = velocity
+	_previous_spin = capped_spin
+	if extra <= 0.0 or linear.length() * slowness > MOST_ARM_CHANGE or turn.length() * slowness > MOST_WRIST_CHANGE:
+		return
+	var pivot := global_position
+	if _is_steered():
+		# Each hand swings the gun about the other, and they share what's along the line between them.
+		var reach := pivot - other_hand.global_position
+		var along := reach.normalized()
+		turn = reach.cross(linear) / reach.length_squared() + along * along.dot(turn) * 0.5
+		linear = along * along.dot(linear) * 0.5
+		pivot = other_hand.global_position
+	elif held and held.mode == GrabPoint.Mode.SUPPORT:
+		# The firing hand carries a spot too close to it to steer by.
+		return
+	shift_velocity(self, linear, turn, pivot)
+	if held and held.mode != GrabPoint.Mode.PIN:
+		held.owner.shift_velocity(linear, turn, pivot)
+		if other_hand and other_hand.held and other_hand.held.owner == held.owner and other_hand.held.mode != GrabPoint.Mode.PIN:
+			shift_velocity(other_hand, linear, turn, pivot)
+
+
+## Adds to a body's velocity as a part of something rigid that speeds up by linear and turns by turn about the pivot.
+static func shift_velocity(body: RigidBody3D, linear: Vector3, turn: Vector3, pivot: Vector3) -> void:
+	var state := PhysicsServer3D.body_get_direct_state(body.get_rid())
+	state.linear_velocity += linear + turn.cross(state.transform * state.center_of_mass_local - pivot)
+	state.angular_velocity += turn
 
 
 ## Grabbing happens on the squeeze, so a hand still squeezing after a magazine clicks home grabs nothing else.
@@ -220,6 +277,7 @@ func _take_hold() -> bool:
 	climbing = true
 	climb_point = target.origin
 	freeze = true
+	DebugLog.event("hand", "%s took hold of a surface" % _label())
 	_pulse(0.5, 0.03)
 	return true
 
@@ -229,6 +287,8 @@ func let_go_of_hold() -> void:
 		climbing = false
 		freeze = false
 		_previous_goal = target
+		_previous_velocity = controller_velocity
+		_previous_spin = Vector3.ZERO
 
 
 func _nearest_point() -> GrabPoint:
@@ -268,6 +328,7 @@ func _update_remote_target() -> void:
 
 
 func grab(point: GrabPoint) -> void:
+	DebugLog.event("hand", "%s grabbed %s %s from %.2f m, %.2f kg" % [_label(), point.owner.name, point.name, global_position.distance_to(point.global_position), point.owner.held_mass()])
 	held = point
 	point.holder = self
 	if point.mode == GrabPoint.Mode.SNAP:
@@ -299,6 +360,7 @@ func release() -> void:
 	if not held:
 		return
 	var point := held
+	DebugLog.event("hand", "%s let go of %s" % [_label(), point.owner.name])
 	held = null
 	point.holder = null
 	_joint.queue_free()
@@ -351,15 +413,22 @@ func _on_gun_touched(speed: float) -> void:
 
 
 ## The real hand meets nothing when the virtual one does, so a touch has to come through the controller.
-func _on_touched(_body: Node) -> void:
+func _on_touched(body: Node) -> void:
 	var speed := linear_velocity.length()
 	if speed > 0.1:
 		_pulse(clampf(speed * 0.5, 0.1, 0.6), 0.02)
+		if DebugLog.due(&"hand_touch", 0.25):
+			DebugLog.event("hand", "%s hit %s at %.1f m/s" % [_label(), body.name, speed])
 
 
 func _pulse(amplitude: float, duration: float, frequency := 0.0) -> void:
 	if controller:
-		controller.trigger_haptic_pulse(&"haptic", frequency, clampf(amplitude, 0.0, 1.0), duration, 0.0)
+		# A thump lasts as long as what caused it, which takes longer in bullet time.
+		controller.trigger_haptic_pulse(&"haptic", frequency, clampf(amplitude, 0.0, 1.0), duration / Engine.time_scale, 0.0)
+
+
+func _label() -> String:
+	return "left hand" if is_left else "right hand"
 
 
 func _axis_torque(angle: float, spin: float, stiffness: float, axis_inertia: float, delta: float) -> float:

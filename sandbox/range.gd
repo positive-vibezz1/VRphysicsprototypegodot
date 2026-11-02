@@ -9,9 +9,11 @@ Grip a ladder, pipe, red ledge or crevice: climb. Jump on a ledge: mantle.
 Trigger on an empty hand, at the dot: grapple. Pull your arm back to haul.
 """
 const FRAME_CONTROLS := COMMON_CONTROLS + """A or D-pad down: drop mag. B or D-pad right: fire mode. X or D-pad left: bolt release.
+Y or D-pad up: bullet time, on and off. The bar on your left hand is what's left of it.
 Left stick: move, L3 or L1 toggles run. Right stick: turn, R3 or R1 or flick up to jump.
 Menu: reset. Hold View with an empty left hand: adjust where your hands sit."""
 const TOUCH_CONTROLS := COMMON_CONTROLS + """A or X: drop mag. B or Y: fire mode, or bolt release when locked back.
+Y: bullet time, on and off. The bar on your left hand is what's left of it.
 Left stick: move, click toggles run. Right stick: turn, click or flick up to jump.
 Menu: reset. Hold Y with an empty left hand: adjust where your hands sit."""
 
@@ -27,6 +29,14 @@ func _ready() -> void:
 	var player: Player = $Player
 	player.controllers_changed.connect(_show_controls)
 	_show_controls(player.controller_profile)
+	DebugLog.event("game", "range loaded, physics at %d Hz, F9 turns this log off" % Engine.physics_ticks_per_second)
+
+
+## F9 in the game window, for when the console is getting in the way of reading something.
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event.is_pressed() and not event.is_echo() and (event as InputEventKey).keycode == KEY_F9:
+		DebugLog.enabled = not DebugLog.enabled
+		print("Debug log ", "on" if DebugLog.enabled else "off")
 
 
 func _show_controls(profile: String) -> void:

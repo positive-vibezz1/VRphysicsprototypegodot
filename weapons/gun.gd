@@ -74,6 +74,7 @@ var _past_eject := false
 var _past_feed := false
 var _short_of_catch := true
 var _support_points: Array[GrabPoint] = []
+var _report := ShotReport.new()
 
 
 func _ready() -> void:
@@ -114,6 +115,8 @@ func _physics_process(delta: float) -> void:
 		_strike(strike)
 
 	_rail.apply(delta)
+	if _report.watching():
+		_report.tick(delta, self, _rail)
 	if _rail.last_stop_impulse > FELT_STOP_IMPULSE:
 		bolt_stopped.emit(_rail.last_stop_impulse)
 		Ballistics.pool.play_click(frame.global_position)
@@ -131,6 +134,7 @@ func release_locked_bolt() -> bool:
 	if not catch_engaged:
 		return false
 	release_bolt()
+	DebugLog.event("gun", "%s bolt released" % name)
 	Ballistics.pool.play_click(frame.global_position)
 	return true
 
@@ -140,6 +144,7 @@ func cycle_fire_mode() -> bool:
 	if fire_control.selector_modes.size() < 2:
 		return false
 	fire_control.cycle_selector()
+	DebugLog.event("gun", "%s fire mode %s" % [name, FireControl.Selector.keys()[fire_control.selector]])
 	Ballistics.pool.play_click(frame.global_position)
 	return true
 
@@ -166,6 +171,17 @@ func held_mass() -> float:
 	if mag_well.magazine:
 		total += mag_well.magazine.mass
 	return total
+
+
+## Adds to the velocity of the whole gun as one rigid piece, which nothing inside it can feel. A force would throw the
+## bolt around.
+func shift_velocity(linear: Vector3, turn: Vector3, pivot: Vector3) -> void:
+	PhysicsHand.shift_velocity(frame, linear, turn, pivot)
+	PhysicsHand.shift_velocity(bolt, linear, turn, pivot)
+	if charging_handle:
+		PhysicsHand.shift_velocity(charging_handle, linear, turn, pivot)
+	if mag_well.latched:
+		PhysicsHand.shift_velocity(mag_well.magazine, linear, turn, pivot)
 
 
 ## Called when a hand takes or lets go of a grab point.
@@ -218,10 +234,13 @@ func _update_cycle() -> void:
 		if chamber == Chamber.EMPTY and magazine and magazine.take_round():
 			chamber = Chamber.LIVE
 			_rail.take_energy(feed_work)
+			if not _report.watching():
+				DebugLog.event("gun", "%s chambered a round, %d left in the magazine" % [name, magazine.count])
 
 	# The follower of an empty magazine lifts the catch into the bolt's path.
 	if magazine and magazine.count == 0 and travel >= catch_travel and _short_of_catch:
 		catch_engaged = true
+		DebugLog.event("gun", "%s bolt locked back on an empty magazine" % name)
 	elif catch_engaged and travel > catch_travel + 0.003 and not (magazine and magazine.count == 0):
 		catch_engaged = false
 	_short_of_catch = travel < catch_travel
@@ -230,6 +249,7 @@ func _update_cycle() -> void:
 
 func _strike(energy: float) -> void:
 	if chamber != Chamber.LIVE or not cartridge.primer_fires(energy, _rng):
+		DebugLog.event("gun", "%s click, no shot: pin %.2f J, chamber %s" % [name, energy, Chamber.keys()[chamber]])
 		misfired.emit(energy)
 		Ballistics.pool.play_click(frame.global_position)
 		return
@@ -258,16 +278,25 @@ func _strike(energy: float) -> void:
 	# The muzzle blast grows with the pressure still behind the bullet when it leaves.
 	_flash.visible = true
 	_flash.scale = Vector3.ONE * 0.03 * sqrt(_shot.muzzle_pressure / 3.0e7)
+	_report.shot(frame)
+	DebugLog.event("gun", "%s fired: %.0f m/s, %.0f MPa peak, %.2f ms in bore, recoil %.2f N s, carrier %.2f N s, pin %.2f J, %d left" % [
+		name, _shot.muzzle_velocity, _shot.peak_pressure / 1.0e6, _shot.barrel_time * 1000.0, _shot.breech_impulse,
+		_shot.carrier_impulse, energy, mag_well.magazine.count if mag_well.latched else 0
+	])
 	shot_fired.emit(_shot, energy)
 
 
-func _on_frame_touched(_body: Node) -> void:
+func _on_frame_touched(body: Node) -> void:
 	surface_hit.emit(frame.linear_velocity.length())
+	if DebugLog.due(&"gun_touch", 0.25):
+		DebugLog.event("gun", "%s hit %s at %.1f m/s" % [name, body.name, frame.linear_velocity.length()])
 
 
 func _eject() -> void:
 	var live := chamber == Chamber.LIVE
 	chamber = Chamber.EMPTY
+	if not _report.watching():
+		DebugLog.event("gun", "%s threw out a %s round" % [name, "live" if live else "spent"])
 	var offset := ejection_port.global_position - frame.global_position
 	var state := PhysicsServer3D.body_get_direct_state(frame.get_rid())
 	# Thrown to the right, a bit up and back, in proportion to how hard the ejector hits the case.

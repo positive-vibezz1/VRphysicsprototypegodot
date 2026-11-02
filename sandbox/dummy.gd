@@ -52,6 +52,7 @@ func _on_bullet_hit(collider: Object, energy: float) -> void:
 	var damage := energy * (head_factor if collider == _head else 1.0) / joules_per_health
 	var hit := "%s %.0f J  -%.0f" % ["head" if collider == _head else "body", energy, damage]
 	health -= damage
+	DebugLog.event("dummy", "%s %s, %.0f HP left" % [name, hit, maxf(health, 0.0)])
 	if health > 0.0:
 		_show_health(hit)
 	else:
@@ -59,6 +60,7 @@ func _on_bullet_hit(collider: Object, energy: float) -> void:
 
 
 func _go_down(cause: String) -> void:
+	DebugLog.event("dummy", "%s down: %s" % [name, cause])
 	health = 0.0
 	_show_health(cause)
 	_set_springs(false)
@@ -66,6 +68,7 @@ func _go_down(cause: String) -> void:
 
 
 func _recover() -> void:
+	DebugLog.event("dummy", "%s back up" % name)
 	health = max_health
 	_show_health("")
 	_set_springs(true)

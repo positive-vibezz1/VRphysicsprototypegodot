@@ -32,6 +32,10 @@ func teleport(delta_transform: Transform3D) -> void:
 	sleeping = false
 
 
+func shift_velocity(linear: Vector3, turn: Vector3, pivot: Vector3) -> void:
+	PhysicsHand.shift_velocity(self, linear, turn, pivot)
+
+
 func held_mass() -> float:
 	return mass
 

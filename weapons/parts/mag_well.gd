@@ -59,6 +59,7 @@ func release() -> void:
 	if magazine == null or not latched:
 		return
 	latched = false
+	DebugLog.event("gun", "%s magazine released, %d rounds" % [owner.name, magazine.count])
 	_latch_armed = false
 	_set_limits(0.0, engage_length + 0.002)
 	magazine.grab_point.enabled = true
@@ -79,6 +80,7 @@ func _can_capture(mag: Magazine) -> bool:
 
 
 func _begin_insert(mag: Magazine) -> void:
+	DebugLog.event("gun", "%s magazine on the rails, %d rounds" % [owner.name, mag.count])
 	var holder := mag.grab_point.holder
 	var depth := clampf(_depth_of(mag), 0.0, engage_length)
 	mag.global_transform = global_transform.translated(-global_basis.y * depth)
@@ -106,6 +108,7 @@ func _make_joint(mag: Magazine) -> void:
 
 func _latch() -> void:
 	latched = true
+	DebugLog.event("gun", "%s magazine seated, %d rounds" % [owner.name, magazine.count])
 	_set_limits(0.0, 0.0)
 	magazine.grab_point.enabled = false
 	if magazine.grab_point.holder:

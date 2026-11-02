@@ -128,6 +128,7 @@ var _mantle_spot := Vector3.ZERO
 var _mantle_time := 0.0
 var _was_menu := false
 var _was_jump := false
+var _motion_state := &""
 var _measure_rate := false
 var _rate_check_time := 0.0
 var _fit_mode := false
@@ -150,6 +151,7 @@ var _fit_tilt := 0.0
 @onready var _left_shoulder: AnimatableBody3D = $LeftShoulder
 @onready var _right_shoulder: AnimatableBody3D = $RightShoulder
 @onready var _fit_label: Label3D = $LeftHand/FitLabel
+@onready var _bullet_time: BulletTime = $BulletTime
 
 
 func _ready() -> void:
@@ -168,14 +170,16 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# delta is world time, which bullet time slows. What the person does themselves goes by real time.
+	var tick := 1.0 / Engine.physics_ticks_per_second
 	if _measure_rate:
 		_rate_check_time += delta
 		if _rate_check_time >= RATE_CHECK_INTERVAL:
 			_rate_check_time = 0.0
 			set_tick_rate(_nearest_refresh_rate(Engine.get_frames_per_second()))
-	_update_fit(delta)
+	_update_fit(tick)
 	_feel_ground(delta)
-	_turn(delta)
+	_turn(tick)
 	_follow_head()
 	_update_hand(_left_hand, _left_controller, _left_aim, delta)
 	_update_hand(_right_hand, _right_controller, _right_aim, delta)
@@ -192,16 +196,23 @@ func _physics_process(delta: float) -> void:
 			_hang(_right_hand, hands_on)
 		else:
 			_walk(delta)
-	_measure_arm_swing(delta)
-	_jump(delta)
+	_measure_arm_swing(tick)
+	_jump(tick)
+	_report_motion(hands_on)
 
 	var forward := -_camera.global_basis.z
 	var yaw := Basis(Vector3.UP, atan2(-forward.x, -forward.z))
 	_right_shoulder.global_position = _camera.global_position + yaw * shoulder_offset
 	_left_shoulder.global_position = _camera.global_position + yaw * Vector3(-shoulder_offset.x, shoulder_offset.y, shoulder_offset.z)
 
+	var slow := not _fit_mode and (_left_controller.is_button_pressed(&"bullet_time") or _right_controller.is_button_pressed(&"bullet_time"))
+	if _bullet_time.update(slow, tick):
+		_left_controller.trigger_haptic_pulse(&"haptic", 0.0, 0.5, 0.08, 0.0)
+		_right_controller.trigger_haptic_pulse(&"haptic", 0.0, 0.5, 0.08, 0.0)
+
 	var reset := _left_controller.is_button_pressed(&"reset") or _right_controller.is_button_pressed(&"reset")
 	if reset and not _was_menu:
+		DebugLog.event("game", "range reset")
 		get_tree().reload_current_scene.call_deferred()
 	_was_menu = reset
 
@@ -227,6 +238,7 @@ func _feel_ground(delta: float) -> void:
 		_height = global_position.y - _floor_point.y
 		# Nothing pushes back on the real body, so a hard landing has to come through the controllers.
 		if _air_time > 0.0 and _fall_speed > SOFT_LANDING:
+			DebugLog.event("player", "landed at %.1f m/s after %.2f s in the air" % [_fall_speed, _air_time])
 			var thump := minf(_fall_speed / 8.0, 1.0)
 			_left_controller.trigger_haptic_pulse(&"haptic", 0.0, thump, 0.06, 0.0)
 			_right_controller.trigger_haptic_pulse(&"haptic", 0.0, thump, 0.06, 0.0)
@@ -358,6 +370,29 @@ func _jump(delta: float) -> void:
 		if boost > _swing_used:
 			_push_off(boost - _swing_used)
 			_swing_used = boost
+		if _take_off_time <= 0.0:
+			DebugLog.event("player", "jumped at %.1f m/s up, %.1f of it from the arms" % [linear_velocity.y, _swing_used])
+
+
+## A line when what the body is doing changes, and its speed once a second while it's moving.
+func _report_motion(hands_on: int) -> void:
+	if not DebugLog.enabled:
+		return
+	var state := &"airborne"
+	if _mantling:
+		state = &"mantling"
+	elif hands_on > 0:
+		state = &"climbing"
+	elif _left_grapple.attached or _right_grapple.attached:
+		state = &"on the grapple"
+	elif _grounded:
+		state = &"on the ground"
+	var flat := Vector2(linear_velocity.x, linear_velocity.z).length()
+	if state != _motion_state:
+		DebugLog.event("player", "%s at %.1f m/s across, %.1f up" % [state, flat, linear_velocity.y])
+		_motion_state = state
+	elif linear_velocity.length() > 0.5 and DebugLog.due(&"player_speed", 1.0):
+		DebugLog.event("player", "%.1f m/s across, %.1f up, %s%s" % [flat, linear_velocity.y, state, ", running" if _sprinting else ""])
 
 
 ## Looks for somewhere to stand on top of what this hand is holding, past it the way the head faces, or else past it

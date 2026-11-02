@@ -32,6 +32,7 @@ var length := 0.0
 ## Must be let off before firing, so dropping a gun or a hold with the trigger still in doesn't shoot.
 var _armed := false
 var _previous_distance := 0.0
+var _peak_tension := 0.0
 
 @onready var _aim_line: MeshInstance3D = $AimLine
 @onready var _line: MeshInstance3D = $Line
@@ -43,6 +44,8 @@ func update(hand: PhysicsHand, body: RigidBody3D, delta: float) -> void:
 	var squeeze := hand.input_trigger
 	if not free or squeeze < HOLD:
 		_armed = free
+		if attached:
+			DebugLog.event("grapple", "let go at %.1f m of cable, body at %.1f m/s, peak tension %.0f N" % [length, body.linear_velocity.length(), _peak_tension])
 		attached = false
 	_aim_line.visible = false
 	_line.visible = false
@@ -67,6 +70,8 @@ func _aim(hand: PhysicsHand, squeeze: float) -> void:
 		_armed = false
 		length = from.distance_to(anchor)
 		_previous_distance = length
+		_peak_tension = 0.0
+		DebugLog.event("grapple", "caught %s %.1f m out" % [(get_collider() as Node).name, length])
 		hand.controller.trigger_haptic_pulse(&"haptic", 0.0, 0.8, 0.06, 0.0)
 	_show(hand, _line if attached else _aim_line)
 
@@ -84,6 +89,7 @@ func _pull(hand: PhysicsHand, body: RigidBody3D, delta: float) -> void:
 	var tension := body.mass * (response * response * (distance - length) + 2.0 * response * stretching)
 	if tension > 0.0:
 		body.apply_central_force(along * minf(tension, max_tension))
+		_peak_tension = maxf(_peak_tension, minf(tension, max_tension))
 	_show(hand, _line)
 
 

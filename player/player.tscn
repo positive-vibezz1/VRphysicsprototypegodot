@@ -5,6 +5,14 @@
 [ext_resource type="PackedScene" path="res://player/hands/hand_left.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://player/hands/hand_right.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://player/grapple.tscn" id="5"]
+[ext_resource type="Script" path="res://player/bullet_time.gd" id="6"]
+
+[sub_resource type="BoxMesh" id="meter_mesh"]
+size = Vector3(0.003, 0.1, 0.012)
+
+[sub_resource type="StandardMaterial3D" id="meter_material"]
+shading_mode = 0
+albedo_color = Color(0.3, 0.9, 1, 1)
 
 [sub_resource type="PhysicsMaterial" id="no_friction"]
 friction = 0.0
@@ -75,6 +83,15 @@ pixel_size = 0.0006
 font_size = 32
 outline_size = 8
 
+[node name="BulletTimeMeter" type="Node3D" parent="LeftHand"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.05, 0.08, 0)
+
+[node name="Bar" type="MeshInstance3D" parent="LeftHand/BulletTimeMeter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0)
+cast_shadow = 0
+mesh = SubResource("meter_mesh")
+surface_material_override/0 = SubResource("meter_material")
+
 [node name="RightHand" parent="." instance=ExtResource("2")]
 model_scene = ExtResource("4")
 
@@ -97,3 +114,7 @@ shape = SubResource("shoulder")
 [node name="LeftGrapple" parent="." instance=ExtResource("5")]
 
 [node name="RightGrapple" parent="." instance=ExtResource("5")]
+
+[node name="BulletTime" type="Node" parent="." node_paths=PackedStringArray("meter")]
+script = ExtResource("6")
+meter = NodePath("../LeftHand/BulletTimeMeter")
