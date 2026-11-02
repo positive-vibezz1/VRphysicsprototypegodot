@@ -52,6 +52,8 @@ const SLOWEST_GRIP := 1.0
 @export var remote_grab_cone := 8.0
 ## How close to a climbable surface a squeeze takes hold of it. Covers the palm to the fingertips.
 @export var hold_reach := 0.15
+## Where this hand draws a full magazine for the gun in the other hand.
+@export var pouch: MagPouch
 
 var controller: XRController3D
 var other_hand: PhysicsHand
@@ -260,6 +262,8 @@ func _update_held_controls() -> void:
 
 func _grab_nearest() -> void:
 	var point := _nearest_point()
+	if not point and pouch:
+		point = pouch.draw(self)
 	if not point and _take_hold():
 		return
 	if not point:
@@ -314,7 +318,7 @@ func _nearest_point() -> GrabPoint:
 ## of a gun that need a hand on them, like the slide, are only reachable in person.
 func _update_remote_target() -> void:
 	remote_target = null
-	if not held and not climbing and not _nearest_point():
+	if not held and not climbing and not _nearest_point() and not (pouch and pouch.can_draw(self)):
 		var pointing := aim_direction if aim_direction != Vector3.ZERO else -global_basis.y
 		var best := cos(deg_to_rad(remote_grab_cone))
 		for point: GrabPoint in GrabPoint.all:

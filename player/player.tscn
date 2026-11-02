@@ -6,6 +6,10 @@
 [ext_resource type="PackedScene" path="res://player/hands/hand_right.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://player/grapple.tscn" id="5"]
 [ext_resource type="Script" path="res://player/bullet_time.gd" id="6"]
+[ext_resource type="Script" path="res://player/mag_pouch.gd" id="mag_pouch"]
+[ext_resource type="PackedScene" path="res://weapons/parts/magazine_9mm.tscn" id="magazine_9mm"]
+[ext_resource type="PackedScene" path="res://weapons/parts/magazine_556.tscn" id="magazine_556"]
+[ext_resource type="Material" path="res://weapons/parts/materials/graphite.tres" id="graphite"]
 
 [sub_resource type="BoxMesh" id="meter_mesh"]
 size = Vector3(0.003, 0.1, 0.012)
@@ -27,6 +31,9 @@ height = 0.8
 
 [sub_resource type="SphereShape3D" id="shoulder"]
 radius = 0.06
+
+[sub_resource type="BoxMesh" id="pouch_mesh"]
+size = Vector3(0.1, 0.13, 0.05)
 
 [node name="Player" type="RigidBody3D"]
 collision_layer = 2
@@ -72,9 +79,10 @@ pose = &"aim"
 tracker = &"right_hand"
 pose = &"aim"
 
-[node name="LeftHand" parent="." instance=ExtResource("2")]
+[node name="LeftHand" parent="." node_paths=PackedStringArray("pouch") instance=ExtResource("2")]
 model_scene = ExtResource("3")
 is_left = true
+pouch = NodePath("../MagPouch")
 
 [node name="FitLabel" type="Label3D" parent="LeftHand"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.14)
@@ -93,8 +101,9 @@ cast_shadow = 0
 mesh = SubResource("meter_mesh")
 surface_material_override/0 = SubResource("meter_material")
 
-[node name="RightHand" parent="." instance=ExtResource("2")]
+[node name="RightHand" parent="." node_paths=PackedStringArray("pouch") instance=ExtResource("2")]
 model_scene = ExtResource("4")
+pouch = NodePath("../MagPouch")
 
 [node name="LeftShoulder" type="AnimatableBody3D" parent="."]
 top_level = true
@@ -119,3 +128,15 @@ shape = SubResource("shoulder")
 [node name="BulletTime" type="Node" parent="." node_paths=PackedStringArray("meter")]
 script = ExtResource("6")
 meter = NodePath("../LeftHand/BulletTimeMeter")
+
+[node name="MagPouch" type="Node3D" parent="." node_paths=PackedStringArray("head")]
+top_level = true
+script = ExtResource("mag_pouch")
+magazines = Array[PackedScene]([ExtResource("magazine_9mm"), ExtResource("magazine_556")])
+head = NodePath("../XROrigin3D/XRCamera3D")
+
+[node name="Mesh" type="MeshInstance3D" parent="MagPouch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.03)
+cast_shadow = 0
+mesh = SubResource("pouch_mesh")
+surface_material_override/0 = ExtResource("graphite")

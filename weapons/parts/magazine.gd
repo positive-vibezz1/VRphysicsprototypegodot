@@ -25,6 +25,11 @@ func take_round() -> bool:
 	return true
 
 
+func refill() -> void:
+	count = capacity
+	_refresh()
+
+
 func teleport(delta_transform: Transform3D) -> void:
 	global_transform = delta_transform * global_transform
 	linear_velocity = Vector3.ZERO
