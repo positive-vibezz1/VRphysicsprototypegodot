@@ -6,7 +6,7 @@
 radius = 0.004
 
 [sub_resource type="CylinderMesh" id="tracer_mesh"]
-top_radius = 0.0
+top_radius = 0.5
 bottom_radius = 0.5
 height = 1.0
 radial_segments = 4

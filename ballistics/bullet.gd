@@ -7,9 +7,9 @@ const LIFETIME := 4.0
 const MIN_TRACER_LENGTH := 0.05
 const MIN_TRACER_WIDTH := 0.003
 
-## How wide the tracer's head looks from the player, in radians. About 3 pixels on a headset: the bullet itself is under
-## a pixel past a couple of meters, and a line that thin flickers out.
-@export var tracer_angle := 0.002
+## How wide the near end of the tracer looks from the player, in radians. About 4 pixels on a headset: the bullet itself
+## is under a pixel past a couple of meters, and a line that thin breaks up into specks with no antialiasing.
+@export var tracer_angle := 0.003
 
 var _drag_factor := 0.0
 var _age := 0.0
@@ -50,15 +50,16 @@ func _physics_process(_delta: float) -> void:
 	_show_tracer(linear_velocity.length())
 
 
-## A streak over the path it just covered, which is what the eye sees of something this fast. It tapers back from the
-## bullet, and goes no further back than the muzzle, so it shows where the bullet really is at every frame.
+## A streak over the path it just covered, which is what the eye sees of something this fast. It runs back from the
+## bullet and no further than the muzzle, so it shows where the bullet really is at every frame.
 func _show_tracer(speed: float) -> void:
 	var path := speed * Engine.time_scale / Engine.physics_ticks_per_second
 	var length := clampf(path, MIN_TRACER_LENGTH, maxf(global_position.distance_to(_launched_from), MIN_TRACER_LENGTH))
 	var camera := get_viewport().get_camera_3d()
 	var width := MIN_TRACER_WIDTH
 	if camera:
-		width = maxf(width, global_position.distance_to(camera.global_position) * tracer_angle)
+		var tail := global_position + global_basis.z * length
+		width = maxf(width, tail.distance_to(camera.global_position) * tracer_angle)
 	_tracer.scale = Vector3(width, width, length)
 
 

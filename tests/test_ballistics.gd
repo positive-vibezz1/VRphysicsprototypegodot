@@ -89,11 +89,13 @@ func test_the_tracer_trails_the_bullet_from_the_muzzle() -> void:
 	assert_almost_eq(bounds.position.z, 0.0, 0.001, "starts at the bullet")
 	assert_almost_eq(bounds.end.z, 1.0, 0.001, "and runs back from it")
 	assert_lt(tracer.scale.z, 0.1, "barely out of the muzzle")
-	var flown := 0.0
+	var forward := Vector3.FORWARD
 	for i: int in 6:
-		await wait_physics_frames(1)
-		flown = bullet.global_position.distance_to(from)
-		assert_lte(tracer.scale.z, maxf(flown, Bullet.MIN_TRACER_LENGTH) + 4.1, "never reaches much past the muzzle")
+		# As rendered: after the physics of this frame, so the streak and the bullet's position go together.
+		await get_tree().process_frame
+		var tail := tracer.global_position + tracer.global_basis.z.normalized() * tracer.scale.z
+		assert_gte((tail - from).dot(forward), -Bullet.MIN_TRACER_LENGTH - 0.001, "the streak stays in front of the gun")
+		assert_almost_eq(tracer.global_position.distance_to(bullet.global_position), 0.0, 0.001, "and nothing is drawn ahead of the bullet")
 	assert_almost_eq(tracer.scale.z, bullet.linear_velocity.length() / 90.0, 0.1, "then covers the path of one tick")
 
 
@@ -106,7 +108,8 @@ func test_the_tracer_looks_the_same_width_from_any_distance() -> void:
 	await wait_physics_frames(10)
 	var distance := bullet.global_position.distance_to(camera.global_position)
 	assert_gt(distance, 30.0)
-	assert_almost_eq((bullet.get_node("Tracer") as Node3D).scale.x, distance * bullet.tracer_angle, 0.015)
+	# Set by the near end a tick ago, and each tick is 4 m.
+	assert_almost_eq((bullet.get_node("Tracer") as Node3D).scale.x, (distance - 8.0) * bullet.tracer_angle, 4.5 * bullet.tracer_angle)
 
 
 func test_rifle_bullet_does_not_tunnel_through_a_thin_wall() -> void:
