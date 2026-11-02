@@ -51,24 +51,341 @@ func _set_pose(tracker: XRControllerTracker, pose: Transform3D) -> void:
 	tracker.set_pose(&"grip", pose, Vector3.ZERO, Vector3.ZERO, XRPose.XR_TRACKING_CONFIDENCE_HIGH)
 
 
+func _add_block(center: Vector3, size: Vector3) -> void:
+	var block: StaticBody3D = StaticBody3D.new()
+	block.set_script(load("res://sandbox/parkour_block.gd"))
+	block.set("size", size)
+	block.position = center
+	_range.add_child(block)
+
+
 func test_left_stick_walks_where_the_head_looks() -> void:
 	await wait_physics_frames(10)
 	var start := _player.global_position
 	_left.set_input(&"primary", Vector2(0, 1))
 	await wait_physics_frames(45)
 	var moved := _player.global_position - start
-	assert_almost_eq(moved.length(), _player.move_speed * 46.0 * DT, 0.3)
-	assert_lt(moved.z, 0.0, "forward is -Z here")
+	assert_lt(moved.z, -0.5, "forward is -Z here")
 	assert_almost_eq(moved.x, 0.0, 0.01)
+
+
+func test_speed_builds_up_at_what_the_legs_can_push() -> void:
+	await wait_physics_frames(10)
+	var acceleration := _player.leg_force / _player.mass
+	_left.set_input(&"primary", Vector2(1, 0))
+	await wait_physics_frames(20)
+	assert_almost_eq(_player.linear_velocity.x, acceleration * 20.0 * DT, 0.25, "no instant speed")
+	await wait_physics_frames(60)
+	assert_almost_eq(_player.linear_velocity.x, _player.move_speed, 0.05, "then holds the walking speed")
 
 
 func test_clicking_the_left_stick_runs() -> void:
 	await wait_physics_frames(10)
-	var start := _player.global_position
-	_left.set_input(&"primary", Vector2(0, 1))
+	_left.set_input(&"primary", Vector2(1, 0))
 	_left.set_input(&"sprint", true)
-	await wait_physics_frames(45)
-	assert_gt((_player.global_position - start).length(), _player.move_speed * 46.0 * DT + 0.5)
+	await wait_physics_frames(100)
+	assert_almost_eq(_player.linear_velocity.x, _player.sprint_speed, 0.05)
+
+
+func test_a_moving_body_takes_time_to_stop() -> void:
+	await wait_physics_frames(10)
+	_left.set_input(&"primary", Vector2(1, 0))
+	await wait_physics_frames(70)
+	_left.set_input(&"primary", Vector2.ZERO)
+	var speed := _player.linear_velocity.x
+	var start := _player.global_position.x
+	await wait_physics_frames(10)
+	assert_gt(_player.linear_velocity.x, speed * 0.5, "still moving")
+	await wait_physics_frames(80)
+	var stopping := speed * speed * 0.5 * _player.mass / _player.leg_force
+	assert_almost_eq(_player.global_position.x - start, stopping, 0.15)
+	assert_almost_eq(_player.linear_velocity.length(), 0.0, 0.01, "and comes to rest")
+
+
+func test_a_running_jump_keeps_its_speed_and_barely_steers() -> void:
+	await wait_physics_frames(10)
+	_left.set_input(&"primary", Vector2(1, 0))
+	_left.set_input(&"sprint", true)
+	await wait_physics_frames(100)
+	var speed := _player.linear_velocity.x
+	_right.set_input(&"jump", true)
+	_left.set_input(&"primary", Vector2(-1, 0))
+	await wait_physics_frames(30)
+	assert_gt(_player.global_position.y, 0.2, "in the air")
+	assert_gt(_player.linear_velocity.x, speed - 1.0, "only the air under the stick to push on")
+
+
+func test_walking_into_a_wall_stops_the_view_too() -> void:
+	_add_block(Vector3(0, 1, 0.5), Vector3(2, 2, 0.5))
+	await wait_physics_frames(10)
+	_left.set_input(&"primary", Vector2(0, 1))
+	await wait_physics_frames(180)
+	assert_gt(_player.global_position.z, 0.75 + 0.2, "capsule stopped at the wall")
+	assert_gt(_camera.global_position.z, 0.75 + 0.2, "and the view didn't carry on through it")
+	assert_almost_eq(_player.linear_velocity.length(), 0.0, 0.05)
+
+
+func test_a_jump_lands_on_bending_legs_that_straighten_again() -> void:
+	await wait_physics_frames(10)
+	_right.set_input(&"jump", true)
+	await wait_physics_frames(30)
+	var lowest := 1.0
+	for i: int in 60:
+		await wait_physics_frames(1)
+		lowest = minf(lowest, _player.global_position.y)
+	assert_between(lowest, -0.2, -0.01, "the view dips a little on landing")
+	assert_almost_eq(_player.global_position.y, 0.0, 0.01, "and comes back up")
+
+
+func test_a_small_step_is_walked_up_and_a_tall_one_stops_the_body() -> void:
+	_add_block(Vector3(1.8, 0.1, 3), Vector3(2, 0.2, 2))
+	_add_block(Vector3(5, 0.25, 3), Vector3(1, 0.5, 2))
+	await wait_physics_frames(10)
+	_left.set_input(&"primary", Vector2(1, 0))
+	await wait_physics_frames(70)
+	assert_almost_eq(_player.global_position.y, 0.2, 0.03, "stepped up")
+	await wait_physics_frames(90)
+	assert_almost_eq(_player.global_position.y, 0.0, 0.03, "stepped back down the far side")
+	assert_lt(_player.global_position.x, 4.5 - 0.2, "and stopped at the wall")
+
+
+func test_hauling_up_a_wall_and_leaning_over_gets_on_top_of_it() -> void:
+	_add_block(Vector3(0, 0.65, 2), Vector3(3, 1.3, 1.4))
+	var hand: PhysicsHand = _player.get_node("RightHand")
+	_player.global_position = Vector3(0, 0, 3.05)
+	await wait_physics_frames(5)
+	var on_top := RIGHT_REST
+	on_top.origin = Vector3(0.2, 1.38, -0.33)
+	for i: int in 30:
+		_set_pose(_right, RIGHT_REST.interpolate_with(on_top, float(i + 1) / 30.0))
+		await wait_physics_frames(1)
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	assert_true(hand.climbing, "took hold of the top")
+	# Push the hand down to the hip, which gets the torso above the wall.
+	var at_hip := on_top
+	at_hip.origin.y = 0.85
+	for i: int in 60:
+		_set_pose(_right, on_top.interpolate_with(at_hip, float(i + 1) / 60.0))
+		await wait_physics_frames(1)
+	assert_gt(_player.global_position.y, 0.45, "hauled up")
+	_camera.position += Vector3(0, 0, -0.7)
+	await wait_physics_frames(10)
+	assert_lt(_player.global_position.z, 2.6, "the torso follows the head over the top")
+	_right.set_input(&"grip", 0.0)
+	await wait_physics_frames(90)
+	assert_almost_eq(_player.global_position.y, 1.3, 0.03, "and stands up on it")
+	assert_false(_player.get_node("Legs").disabled, "legs back out")
+
+
+func test_walking_up_a_ramp_and_standing_on_it() -> void:
+	var ramp_top_y := 2.0
+	_player.global_position = Vector3(-3, 0.5, 8.2)
+	await wait_physics_frames(30)
+	var standing := _player.global_position
+	await wait_physics_frames(60)
+	assert_almost_eq(_player.global_position.distance_to(standing), 0.0, 0.03, "legs hold it on the slope")
+	_left.set_input(&"primary", Vector2(0, -1))
+	await wait_physics_frames(180)
+	assert_almost_eq(_player.global_position.y, ramp_top_y, 0.15, "walked up onto the platform")
+
+
+func test_ground_too_steep_for_the_legs_slides_away() -> void:
+	_player.global_position = Vector3(1, 1.7, 8.1)
+	await wait_physics_frames(60)
+	assert_lt(_player.global_position.y, 1.0, "slid down it")
+	assert_lt(_player.global_position.z, 7.9)
+
+
+func test_walking_into_a_cube_shoves_it() -> void:
+	var cube: RigidBody3D = _range.get_node("Parkour/PushCube1")
+	var start := cube.global_position
+	_player.global_position = Vector3(start.x, 0, start.z + 1.5)
+	await wait_physics_frames(10)
+	_left.set_input(&"primary", Vector2(0, 1))
+	await wait_physics_frames(90)
+	assert_lt(cube.global_position.z, start.z - 0.3, "the cube went along")
+	assert_almost_eq(cube.global_position.x, start.x, 0.1)
+
+
+func test_standing_on_a_cube_stays_on_top_of_it() -> void:
+	var cube: RigidBody3D = _range.get_node("Parkour/PushCube1")
+	_player.global_position = cube.global_position + Vector3.UP * 0.4
+	await wait_physics_frames(60)
+	assert_almost_eq(_player.global_position.y, 0.7, 0.03, "cube holds the weight")
+	assert_almost_eq(cube.global_position.y, 0.35, 0.03)
+	assert_almost_eq(_player.global_position.z, cube.global_position.z, 0.05)
+
+
+## A bar in reach of where the right hand rests, clear of the body, for a player at z = 3 and the height given.
+func _bar_at_right_hand(player_y := 0.0) -> void:
+	_add_block(Vector3(0.2, player_y + 1.2, 2.73), Vector3(0.5, 0.05, 0.05))
+
+
+func test_pulling_down_on_a_hold_lifts_the_body_and_it_hangs_there() -> void:
+	_bar_at_right_hand()
+	await wait_physics_frames(10)
+	var hand: PhysicsHand = _player.get_node("RightHand")
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	assert_true(hand.climbing, "squeezing takes hold")
+	var on_hold := hand.global_position
+	await _pull_right_hand_down(0.4, 60)
+	assert_almost_eq(_player.global_position.y, 0.4, 0.06, "the body rose as far as the hand came down")
+	await wait_physics_frames(60)
+	assert_almost_eq(_player.global_position.y, 0.4, 0.02, "and the arm holds its weight")
+	assert_almost_eq(hand.global_position.distance_to(on_hold), 0.0, 0.001, "the hand stays on the hold")
+
+
+func test_letting_go_mid_pull_flies_on_and_falls() -> void:
+	_bar_at_right_hand()
+	await wait_physics_frames(10)
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	await _pull_right_hand_down(0.5, 25)
+	_right.set_input(&"grip", 0.0)
+	await wait_physics_frames(2)
+	assert_false(_player.get_node("RightHand").climbing, "let go")
+	var rising := _player.linear_velocity.y
+	assert_gt(rising, 0.4, "keeps the speed of the pull")
+	var height := _player.global_position.y
+	await wait_physics_frames(5)
+	assert_gt(_player.global_position.y, height, "still going up")
+	await wait_physics_frames(120)
+	assert_almost_eq(_player.global_position.y, 0.0, 0.03, "and comes back down")
+
+
+func test_two_arms_haul_up_faster_than_one() -> void:
+	_add_block(Vector3(0, 1.2, 2.73), Vector3(1, 0.05, 0.05))
+	await wait_physics_frames(10)
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	await _pull_right_hand_down(0.5, 15)
+	var one_arm := _player.global_position.y
+	_right.set_input(&"grip", 0.0)
+	_set_pose(_right, RIGHT_REST)
+	await wait_physics_frames(120)
+	assert_almost_eq(_player.global_position.y, 0.0, 0.03, "back on the ground")
+
+	_right.set_input(&"grip", 1.0)
+	_left.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	assert_true(_player.get_node("LeftHand").climbing)
+	var left_low := LEFT_REST
+	left_low.origin.y -= 0.5
+	for i: int in 15:
+		_set_pose(_left, LEFT_REST.interpolate_with(left_low, float(i + 1) / 15.0))
+		await _pull_right_hand_down(0.5 * (i + 1.0) / 15.0, 1)
+	assert_gt(_player.global_position.y, one_arm + 0.1)
+
+
+func test_an_arm_too_weak_for_the_body_slips_off() -> void:
+	_player.global_position = Vector3(0, 4, 3)
+	_bar_at_right_hand(4.0)
+	var hand: PhysicsHand = _player.get_node("RightHand")
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	assert_true(hand.climbing)
+	_player.arm_force = 500.0
+	await wait_physics_frames(80)
+	assert_false(hand.climbing, "sank until the grip failed")
+	assert_lt(_player.linear_velocity.y, -1.0, "and falling")
+
+
+func test_only_climbable_surfaces_can_be_gripped() -> void:
+	await wait_physics_frames(10)
+	var near_floor := RIGHT_REST
+	near_floor.origin.y = 0.08
+	var hand: PhysicsHand = _player.get_node("RightHand")
+	for i: int in 45:
+		_set_pose(_right, RIGHT_REST.interpolate_with(near_floor, float(i + 1) / 45.0))
+		await wait_physics_frames(1)
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	assert_false(hand.climbing)
+
+
+func _pull_right_hand_down(distance: float, ticks: int) -> void:
+	var low := RIGHT_REST
+	low.origin.y -= distance
+	for i: int in ticks:
+		_set_pose(_right, RIGHT_REST.interpolate_with(low, float(i + 1) / ticks))
+		await wait_physics_frames(1)
+
+
+func _point_right_hand(direction: Vector3) -> void:
+	var aim := Transform3D(Basis.looking_at(direction, Vector3.BACK), RIGHT_REST.origin)
+	_right.set_pose(&"aim", aim, Vector3.ZERO, Vector3.ZERO, XRPose.XR_TRACKING_CONFIDENCE_HIGH)
+
+
+func test_grapple_winds_the_body_up_and_lets_it_fly_on() -> void:
+	_add_block(Vector3(0.2, 8, 2.8), Vector3(2, 0.5, 2))
+	await wait_physics_frames(10)
+	var grapple: Grapple = _player.get_node("RightGrapple")
+	_point_right_hand(Vector3.UP)
+	_right.set_input(&"trigger", 1.0)
+	await wait_physics_frames(3)
+	assert_true(grapple.attached, "squeezing shoots it")
+	assert_almost_eq(grapple.anchor.y, 7.75, 0.01, "at the surface it points at")
+	await wait_physics_frames(60)
+	assert_gt(_player.global_position.y, 1.5, "winding in hauls the body up")
+	var peak_acceleration := (grapple.max_tension - _player.mass * 9.8) / _player.mass
+	assert_lt(_player.linear_velocity.y, peak_acceleration * 63.0 * DT + 0.2, "no harder than the cable can pull")
+	var rising := _player.linear_velocity.y
+	_right.set_input(&"trigger", 0.0)
+	await wait_physics_frames(2)
+	assert_false(grapple.attached, "letting off lets go")
+	assert_gt(_player.linear_velocity.y, rising - 1.0, "and the body flies on")
+
+
+func test_grapple_swings_at_a_held_length() -> void:
+	_add_block(Vector3(5, 9, 3), Vector3(2, 0.5, 2))
+	_player.global_position = Vector3(0, 4, 3)
+	var grapple: Grapple = _player.get_node("RightGrapple")
+	var hand: PhysicsHand = _player.get_node("RightHand")
+	await wait_physics_frames(2)
+	_point_right_hand(hand.global_position.direction_to(Vector3(5, 8.75, 3)))
+	_right.set_input(&"trigger", 0.65)
+	await wait_physics_frames(2)
+	assert_true(grapple.attached)
+	_right.set_input(&"trigger", 0.5)
+	var length := grapple.length
+	await wait_physics_frames(60)
+	assert_gt(grapple.anchor.distance_to(hand.target.origin), length - 1.0, "not wound in")
+	assert_lt(grapple.anchor.distance_to(hand.target.origin), length + 0.3, "and it holds the body")
+	assert_gt(_player.linear_velocity.x, 2.0, "swinging under the anchor")
+	assert_gt(_player.global_position.y, 1.0, "not dropping to the floor")
+
+
+func test_grapple_only_catches_climbable_surfaces() -> void:
+	await wait_physics_frames(10)
+	var grapple: Grapple = _player.get_node("RightGrapple")
+	_point_right_hand(Vector3.DOWN)
+	_right.set_input(&"trigger", 1.0)
+	await wait_physics_frames(3)
+	assert_false(grapple.attached, "the floor is not one")
+
+
+func test_grapple_doesnt_fire_from_a_hand_holding_a_gun() -> void:
+	_add_block(Vector3(0.2, 8, 2.8), Vector3(2, 0.5, 2))
+	await wait_physics_frames(10)
+	var grapple: Grapple = _player.get_node("RightGrapple")
+	var hand: PhysicsHand = _player.get_node("RightHand")
+	_right.set_input(&"grip", 1.0)
+	hand.grab((_range.get_node("Pistol") as Gun).grip)
+	_point_right_hand(Vector3.UP)
+	_right.set_input(&"trigger", 1.0)
+	await wait_physics_frames(3)
+	assert_false(grapple.attached)
+	_right.set_input(&"grip", 0.0)
+	await wait_physics_frames(3)
+	assert_null(hand.held, "dropped it")
+	assert_false(grapple.attached, "the trigger has to come up before it shoots")
+	_right.set_input(&"trigger", 0.0)
+	await wait_physics_frames(2)
+	_right.set_input(&"trigger", 1.0)
+	await wait_physics_frames(2)
+	assert_true(grapple.attached, "then it does")
 
 
 func test_right_stick_click_jumps_and_lands() -> void:
@@ -169,7 +486,7 @@ func test_hand_fit_moves_the_hands_and_comes_back_next_time() -> void:
 	await wait_physics_frames(2)
 	_left.set_input(&"primary", Vector2(0, 1))
 	var before_walk := _player.global_position
-	await wait_physics_frames(10)
+	await wait_physics_frames(20)
 	assert_gt((_player.global_position - before_walk).length(), 0.1, "sticks walk again")
 	_left.set_input(&"primary", Vector2.ZERO)
 
@@ -270,6 +587,16 @@ func test_right_stick_turns_smoothly() -> void:
 	await wait_physics_frames(45)
 	assert_gt(first.signed_angle_to(-_camera.global_basis.z, Vector3.UP), -3.2)
 	assert_lt(first.signed_angle_to(-_camera.global_basis.z, Vector3.UP), -0.5, "turned right")
+
+
+func test_turning_pivots_on_the_head() -> void:
+	await wait_physics_frames(10)
+	_camera.position += Vector3(0.3, 0, 0)
+	await wait_physics_frames(5)
+	var view := _camera.global_position
+	_right.set_input(&"primary", Vector2(1, 0))
+	await wait_physics_frames(60)
+	assert_almost_eq((_camera.global_position - view).length(), 0.0, 0.01)
 
 
 func test_capsule_follows_real_steps_without_moving_the_view() -> void:

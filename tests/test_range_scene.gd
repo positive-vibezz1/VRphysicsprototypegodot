@@ -31,6 +31,24 @@ func test_range_loads_and_settles() -> void:
 	assert_eq(ar.chamber, Gun.Chamber.LIVE)
 
 
+func test_parkour_course_is_climbable_and_clear_of_the_firing_lanes() -> void:
+	var course: Node3D = _range.get_node("Parkour")
+	var blocks := 0
+	for block: Node in course.get_children():
+		if block is StaticBody3D:
+			blocks += 1
+			assert_ne((block as StaticBody3D).collision_layer & PhysicsHand.CLIMBABLE_LAYER, 0, block.name + " can be gripped")
+			assert_ne((block as StaticBody3D).collision_layer & 1, 0, block.name + " is world")
+			assert_gt((block as Node3D).global_position.z, 5.0, block.name + " is behind the shooter")
+	assert_gt(blocks, 30)
+	var player: Player = _range.get_node("Player")
+	for walkable: String in ["EasyRamp", "HardRamp", "Kicker"]:
+		var normal: Vector3 = (course.get_node(walkable) as Node3D).global_basis.y
+		assert_lt(normal.angle_to(Vector3.UP), player.floor_max_angle, walkable + " can be walked up")
+	var steep: Vector3 = (course.get_node("SteepRamp") as Node3D).global_basis.y
+	assert_gt(steep.angle_to(Vector3.UP), player.floor_max_angle, "the steep one can't")
+
+
 func test_pick_up_the_pistol_and_hit_a_steel_plate() -> void:
 	var pistol: Gun = _range.get_node("Pistol")
 	var hand: PhysicsHand = _range.get_node("Player/RightHand")

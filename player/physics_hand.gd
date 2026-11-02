@@ -10,6 +10,8 @@ extends RigidBody3D
 const GRIP_ON := 0.6
 const GRIP_OFF := 0.4
 const TRIGGER_FINGER_REST := 0.4
+## Surfaces with this collision layer can be gripped and climbed.
+const CLIMBABLE_LAYER := 1024
 ## Largest stiffness * dt^2 / inertia that stays well damped in Jolt's semi-implicit integration.
 const MAX_STEP_STIFFNESS := 0.4
 
@@ -37,12 +39,20 @@ const MAX_STEP_STIFFNESS := 0.4
 @export var remote_grab_range := 1.5
 ## How far off the pointing direction still counts as pointing at it.
 @export var remote_grab_cone := 8.0
+## How close to a climbable surface a squeeze takes hold of it. Covers the palm to the fingertips.
+@export var hold_reach := 0.15
 
 var controller: XRController3D
 var other_hand: PhysicsHand
 var held: GrabPoint
 ## What pointing would pick up right now.
 var remote_target: GrabPoint
+## Hanging on a climbable surface. The hand stays on it, and the player pulls the body around it.
+var climbing := false
+## Where the controller was when it took hold.
+var climb_point := Vector3.ZERO
+## World velocity of the controller, set by the player.
+var controller_velocity := Vector3.ZERO
 ## Poses and inputs for this tick, set by the player (or a test).
 var target := Transform3D.IDENTITY
 ## World pointing direction. Zero means the way the fingers point.
@@ -99,7 +109,11 @@ func set_target(pose: Transform3D) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if _target_valid:
+	if climbing:
+		# The arm couldn't keep up, or the body got stopped by something: the grip fails.
+		if target.origin.distance_to(climb_point) > max_separation:
+			let_go_of_hold()
+	elif _target_valid:
 		_track(delta)
 	_update_remote_target()
 	_update_grab()
@@ -160,6 +174,7 @@ func _update_grab() -> void:
 	if input_grip < GRIP_OFF:
 		_grip_armed = true
 		release()
+		let_go_of_hold()
 	elif input_grip > GRIP_ON and _grip_armed:
 		_grip_armed = false
 		if not held:
@@ -184,10 +199,36 @@ func _update_held_controls() -> void:
 
 func _grab_nearest() -> void:
 	var point := _nearest_point()
+	if not point and _take_hold():
+		return
 	if not point:
 		point = remote_target
 	if point:
 		grab(point)
+
+
+## Grips a climbable surface if one is in reach. Only runs on a squeeze, so it may allocate.
+func _take_hold() -> bool:
+	var reach := SphereShape3D.new()
+	reach.radius = hold_reach
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = reach
+	query.transform = Transform3D(Basis.IDENTITY, global_position)
+	query.collision_mask = CLIMBABLE_LAYER
+	if get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty():
+		return false
+	climbing = true
+	climb_point = target.origin
+	freeze = true
+	_pulse(0.5, 0.03)
+	return true
+
+
+func let_go_of_hold() -> void:
+	if climbing:
+		climbing = false
+		freeze = false
+		_previous_goal = target
 
 
 func _nearest_point() -> GrabPoint:
@@ -207,7 +248,7 @@ func _nearest_point() -> GrabPoint:
 ## of a gun that need a hand on them, like the slide, are only reachable in person.
 func _update_remote_target() -> void:
 	remote_target = null
-	if not held and not _nearest_point():
+	if not held and not climbing and not _nearest_point():
 		var pointing := aim_direction if aim_direction != Vector3.ZERO else -global_basis.y
 		var best := cos(deg_to_rad(remote_grab_cone))
 		for point: GrabPoint in GrabPoint.all:
@@ -223,11 +264,7 @@ func _update_remote_target() -> void:
 				remote_target = point
 	_laser.visible = remote_target != null
 	if remote_target:
-		var offset := remote_target.global_position - global_position
-		var up := Vector3.UP if absf(offset.normalized().y) < 0.99 else Vector3.RIGHT
-		var along := Basis.looking_at(offset, up)
-		along.z *= offset.length()
-		_laser.global_transform = Transform3D(along, global_position + offset * 0.5)
+		Grapple.stretch_line(_laser, global_position, remote_target.global_position)
 
 
 func grab(point: GrabPoint) -> void:

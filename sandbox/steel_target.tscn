@@ -51,7 +51,7 @@ surface_material_override/0 = SubResource("post")
 [node name="Plate" type="RigidBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.135, 0)
 collision_layer = 512
-collision_mask = 64
+collision_mask = 66
 mass = 2.9
 angular_damp = 0.4
 

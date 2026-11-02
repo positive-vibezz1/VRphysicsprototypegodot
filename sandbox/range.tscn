@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3]
+[gd_scene load_steps=28 format=3]
 
 [ext_resource type="Script" path="res://sandbox/range.gd" id="1"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="2"]
@@ -7,6 +7,8 @@
 [ext_resource type="PackedScene" path="res://weapons/parts/magazine_9mm.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://weapons/parts/magazine_556.tscn" id="6"]
 [ext_resource type="PackedScene" path="res://sandbox/steel_target.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://sandbox/parkour.tscn" id="8"]
+[ext_resource type="Shader" path="res://sandbox/world_grid.gdshader" id="9"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_material"]
 
@@ -24,9 +26,9 @@ tonemap_mode = 2
 [sub_resource type="PlaneMesh" id="floor_mesh"]
 size = Vector2(300, 300)
 
-[sub_resource type="StandardMaterial3D" id="floor_material"]
-albedo_color = Color(0.36, 0.38, 0.3, 1)
-roughness = 0.95
+[sub_resource type="ShaderMaterial" id="floor_material"]
+shader = ExtResource("9")
+shader_parameter/color = Color(0.36, 0.38, 0.3, 1)
 
 [sub_resource type="BoxShape3D" id="table_shape"]
 size = Vector3(1.8, 0.9, 1)
@@ -175,7 +177,7 @@ surface_material_override/0 = SubResource("paper")
 [node name="Crate1" type="RigidBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0.175, -8)
 collision_layer = 512
-collision_mask = 589
+collision_mask = 591
 mass = 4.0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Crate1"]
@@ -188,7 +190,7 @@ surface_material_override/0 = SubResource("wood")
 [node name="Crate2" type="RigidBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.6, 0.175, -8)
 collision_layer = 512
-collision_mask = 589
+collision_mask = 591
 mass = 4.0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Crate2"]
@@ -201,7 +203,7 @@ surface_material_override/0 = SubResource("wood")
 [node name="Crate3" type="RigidBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.8, 0.525, -8)
 collision_layer = 512
-collision_mask = 589
+collision_mask = 591
 mass = 4.0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Crate3"]
@@ -214,7 +216,7 @@ surface_material_override/0 = SubResource("wood")
 [node name="Can1" type="RigidBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.9, 0.76, -8)
 collision_layer = 512
-collision_mask = 589
+collision_mask = 591
 mass = 0.35
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Can1"]
@@ -227,7 +229,7 @@ surface_material_override/0 = SubResource("paper")
 [node name="Can2" type="RigidBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.7, 0.76, -8)
 collision_layer = 512
-collision_mask = 589
+collision_mask = 591
 mass = 0.35
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Can2"]
@@ -236,3 +238,5 @@ shape = SubResource("can_shape")
 [node name="Mesh" type="MeshInstance3D" parent="Can2"]
 mesh = SubResource("can_mesh")
 surface_material_override/0 = SubResource("paper")
+
+[node name="Parkour" parent="." instance=ExtResource("8")]

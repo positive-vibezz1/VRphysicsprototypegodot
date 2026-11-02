@@ -1,6 +1,10 @@
 class_name Player
-extends CharacterBody3D
-## XR rig. The capsule follows the head, the sticks move and turn smoothly, the hands chase the controllers.
+extends RigidBody3D
+## XR rig. A rigid body with a person's mass that only ever gets pushed around by capped forces from the legs,
+## arms and grapple, so it takes time to get going and keeps going until something stops it. The body is a torso on
+## a pair of legs: the legs are a spring that feels for the ground, with a short capsule to stop it on anything too
+## tall to step onto, and they tuck up out of the way when hanging so the torso can get over a ledge. The capsule
+## follows the head, the sticks move and turn smoothly, the hands chase the controllers.
 ## Buttons are read as game actions: openxr_action_map.tres binds them natively for each kind of controller.
 
 ## The kind of controller in use changed. The profile is an OpenXR interaction profile path.
@@ -13,12 +17,38 @@ const RATE_CHECK_INTERVAL := 3.0
 const FIT_HOLD_TIME := 1.0
 const FIT_MOVE_SPEED := 0.04
 const FIT_TILT_SPEED := 30.0
+## How long after leaving the ground a jump still works, so running off an edge doesn't eat one.
+const JUMP_GRACE := 0.1
+## How far above standing height the legs still reach the ground.
+const GROUND_REACH := 0.1
+## A landing below this speed isn't worth a thump.
+const SOFT_LANDING := 1.5
 
 ## A brisk walk, and a run with the left stick clicked in.
 @export var move_speed := 4.0
 @export var sprint_speed := 6.5
 @export var turn_speed := 2.2
+## How fast the turn rate changes. Quick, because easing a turn in and out is what makes people sick.
+@export var turn_acceleration := 14.0
 @export var stick_deadzone := 0.15
+## Most the legs can push along the ground: 7 m/s2 on 80 kg, about a hard sprint start or stop. Speeding up, stopping
+## and changing direction all come from this.
+@export var leg_force := 560.0
+## Most the legs can push up: 5 times body weight, about what a hard landing takes.
+@export var leg_lift := 4000.0
+## How fast the legs take up a difference from standing height, in rad/s. A critically damped spring: a jump's landing
+## dips the view a few centimeters, and a higher value lands harder.
+@export var stand_response := 14.0
+## How fast the legs straighten when there's far to go, such as standing up after hauling onto a ledge.
+@export var stand_up_speed := 1.5
+## Steering in the air, about 1 m/s2. Enough to adjust a jump, not to change your mind about it.
+@export var air_force := 80.0
+## Ground steeper than this is no use to the legs, so the body slides off it.
+@export_range(0.0, 90.0, 1.0, "radians_as_degrees") var floor_max_angle := deg_to_rad(46.0)
+## Most one arm can pull: 1.4 times body weight, so it can hang on and only just haul up. Two arms pull up easily.
+@export var arm_force := 1100.0
+## How fast the arms close the gap to the hold, in rad/s. A critically damped spring: higher is stiffer.
+@export var arm_response := 20.0
 ## Take-off speed: 3.2 m/s lifts the feet about 50 cm, a good standing jump.
 @export var jump_speed := 3.2
 ## Shoulder position relative to the head, for bracing a stock.
@@ -30,7 +60,21 @@ var controller_profile := ""
 
 var _xr: OpenXRInterface
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+var _turn_rate := 0.0
+var _grounded := false
+## Of the body above where it stands on the ground under it.
+var _height := 0.0
+var _air_time := 0.0
 var _fall_speed := 0.0
+var _floor_normal := Vector3.UP
+var _floor_velocity := Vector3.ZERO
+var _floor_point := Vector3.ZERO
+## What's underfoot if it can move, so it gets the push back from the feet.
+var _floor_body: RigidBody3D
+var _legs_bottom := 0.0
+var _torso_bottom := 0.0
+var _sweep := PhysicsTestMotionParameters3D.new()
+var _sweep_result := PhysicsTestMotionResult3D.new()
 var _was_menu := false
 var _was_jump := false
 var _measure_rate := false
@@ -40,6 +84,8 @@ var _fit_hold := 0.0
 var _fit_offset := Vector3.ZERO
 var _fit_tilt := 0.0
 
+@onready var _legs: CollisionShape3D = $Legs
+@onready var _feet: RayCast3D = $Feet
 @onready var _origin: XROrigin3D = $XROrigin3D
 @onready var _camera: XRCamera3D = $XROrigin3D/XRCamera3D
 @onready var _left_controller: XRController3D = $XROrigin3D/LeftController
@@ -48,12 +94,16 @@ var _fit_tilt := 0.0
 @onready var _right_aim: XRController3D = $XROrigin3D/RightAim
 @onready var _left_hand: PhysicsHand = $LeftHand
 @onready var _right_hand: PhysicsHand = $RightHand
+@onready var _left_grapple: Grapple = $LeftGrapple
+@onready var _right_grapple: Grapple = $RightGrapple
 @onready var _left_shoulder: AnimatableBody3D = $LeftShoulder
 @onready var _right_shoulder: AnimatableBody3D = $RightShoulder
 @onready var _fit_label: Label3D = $LeftHand/FitLabel
 
 
 func _ready() -> void:
+	_legs_bottom = _bottom_of(_legs)
+	_torso_bottom = _bottom_of($Torso)
 	_left_hand.other_hand = _right_hand
 	_right_hand.other_hand = _left_hand
 	_left_hand.controller = _left_controller
@@ -73,9 +123,22 @@ func _physics_process(delta: float) -> void:
 			_rate_check_time = 0.0
 			set_tick_rate(_nearest_refresh_rate(Engine.get_frames_per_second()))
 	_update_fit(delta)
-	_locomote(delta)
-	_update_hand(_left_hand, _left_controller, _left_aim)
-	_update_hand(_right_hand, _right_controller, _right_aim)
+	_feel_ground(delta)
+	_turn(delta)
+	_follow_head()
+	_update_hand(_left_hand, _left_controller, _left_aim, delta)
+	_update_hand(_right_hand, _right_controller, _right_aim, delta)
+	_left_grapple.update(_left_hand, self, delta)
+	_right_grapple.update(_right_hand, self, delta)
+	var hands_on := int(_left_hand.climbing) + int(_right_hand.climbing)
+	_tuck_legs(hands_on > 0 or _left_grapple.attached or _right_grapple.attached)
+	_stand(hands_on)
+	if hands_on > 0:
+		_hang(_left_hand, hands_on)
+		_hang(_right_hand, hands_on)
+	else:
+		_walk(delta)
+	_jump()
 
 	var forward := -_camera.global_basis.z
 	var yaw := Basis(Vector3.UP, atan2(-forward.x, -forward.z))
@@ -88,44 +151,139 @@ func _physics_process(delta: float) -> void:
 	_was_menu = reset
 
 
-func _locomote(delta: float) -> void:
-	var turn := _stick(_right_controller).x
-	rotate_y(-turn * turn_speed * delta)
+## Feels straight down from the bottom of the body for what the legs stand on. Only a surface flat enough to stand on
+## counts: anything steeper is left to the capsules, which have no friction, so the body slides off it.
+func _feel_ground(delta: float) -> void:
+	var start := (_torso_bottom if _legs.disabled else _legs_bottom) + 0.1
+	_feet.position.y = start
+	_feet.target_position.y = -start - GROUND_REACH
+	_feet.force_raycast_update()
+	_grounded = _feet.is_colliding() and _feet.get_collision_normal().y > cos(floor_max_angle)
+	_floor_body = null
+	if _grounded:
+		_floor_point = _feet.get_collision_point()
+		_floor_normal = _feet.get_collision_normal()
+		_floor_body = _feet.get_collider() as RigidBody3D
+		_floor_velocity = _floor_body.linear_velocity if _floor_body else Vector3.ZERO
+		_height = global_position.y - _floor_point.y
+		# Nothing pushes back on the real body, so a hard landing has to come through the controllers.
+		if _air_time > 0.0 and _fall_speed > SOFT_LANDING:
+			var thump := minf(_fall_speed / 8.0, 1.0)
+			_left_controller.trigger_haptic_pulse(&"haptic", 0.0, thump, 0.06, 0.0)
+			_right_controller.trigger_haptic_pulse(&"haptic", 0.0, thump, 0.06, 0.0)
+		_air_time = 0.0
+	else:
+		_air_time += delta
+	_fall_speed = -linear_velocity.y
 
+
+## Legs come back out only once there's room for them under the torso, or they would appear inside a ledge.
+func _tuck_legs(tucked: bool) -> void:
+	if tucked:
+		_legs.disabled = true
+	elif _legs.disabled and (not _grounded or _height >= -_legs_bottom):
+		_legs.disabled = false
+
+
+## The legs carry the body's weight, unless the arms are, and push to keep it at standing height over the ground.
+## They can only push: a body going up leaves them behind.
+func _stand(hands_on: int) -> void:
+	if not _grounded:
+		return
+	var rising := (linear_velocity - _floor_velocity).dot(_floor_normal) / _floor_normal.y
+	var goal := minf(-_height * stand_response * 0.5, stand_up_speed)
+	var weight := _gravity if hands_on == 0 else 0.0
+	var force := Vector3.UP * clampf(mass * (weight + 2.0 * stand_response * (goal - rising)), 0.0, leg_lift)
+	apply_central_force(force)
+	if _floor_body:
+		_floor_body.apply_force(-force, _floor_point - _floor_body.global_position)
+
+
+## Turns the view around the head, so turning never moves it. The capsule is round and has no need to turn.
+func _turn(delta: float) -> void:
+	_turn_rate = move_toward(_turn_rate, -_stick(_right_controller).x * turn_speed, turn_acceleration * delta)
+	var head := _camera.global_position
+	_origin.rotate_y(_turn_rate * delta)
+	_origin.global_position += head - _camera.global_position
+
+
+## The capsule follows the head as far as it can, and the view stays put. A blocked capsule just leaves the head
+## leaning past it, which is what lets you lean over the table. This is the person's own steps catching the capsule
+## up, not simulated motion, so it moves the body directly and gives it no momentum.
+func _follow_head() -> void:
+	var offset := _camera.global_position - global_position
+	offset.y = 0.0
+	if offset.is_zero_approx():
+		return
+	_sweep.from = global_transform
+	_sweep.motion = offset
+	var followed := Vector3.ZERO
+	# The second pass slides along whatever stopped the first. Travel also includes being pushed out of contacts,
+	# which would let a body held against a wall carry the view through it, so only count the motion asked for.
+	for i: int in 2:
+		var blocked := PhysicsServer3D.body_test_motion(get_rid(), _sweep, _sweep_result)
+		var moved := _sweep.motion - _sweep_result.get_remainder()
+		followed += moved
+		if not blocked:
+			break
+		_sweep.from = _sweep.from.translated(moved)
+		_sweep.motion = _sweep_result.get_remainder().slide(_sweep_result.get_collision_normal())
+	followed.y = 0.0
+	global_position += followed
+	_origin.global_position -= followed
+
+
+## Hanging on a hold: the arm pulls the body to bring the controller back to where it took hold, and carries its
+## share of the weight, up to what an arm can do. Letting go leaves the body with the speed it has.
+func _hang(hand: PhysicsHand, hands_on: int) -> void:
+	if hand.climbing:
+		var gap := hand.climb_point - hand.target.origin
+		var acceleration := arm_response * arm_response * gap - 2.0 * arm_response * hand.controller_velocity
+		apply_central_force((mass * (acceleration + Vector3.UP * _gravity / hands_on)).limit_length(arm_force))
+
+
+## The legs push to bring the body up to the stick's speed along the ground, up to what legs can do. Anything
+## underfoot that can move gets pushed the other way.
+func _walk(delta: float) -> void:
 	var stick := _stick(_left_controller)
 	var forward := -_camera.global_basis.z
 	forward.y = 0.0
 	forward = forward.normalized()
-	var right := Vector3(-forward.z, 0.0, forward.x)
+	var wish := Vector3(-forward.z, 0.0, forward.x) * stick.x + forward * stick.y
 	var speed := sprint_speed if _left_controller.is_button_pressed(&"sprint") else move_speed
-	var walk := (right * stick.x + forward * stick.y) * speed
-
-	# The capsule follows the head as far as it can, and the view stays put. A blocked capsule just leaves the
-	# head leaning past it, which is what lets you lean over the table.
-	var head_offset := _camera.global_position - global_position
-	head_offset.y = 0.0
-	var before := global_position
-	velocity = head_offset / delta
-	move_and_slide()
-	var followed := global_position - before
-	followed.y = 0.0
-	_origin.global_position -= followed
-
-	# Jump with its button, or by flicking the right stick up.
-	var jump := not _fit_mode and (_right_controller.is_button_pressed(&"jump") or _right_controller.get_vector2(&"primary").y > 0.8)
-	if is_on_floor():
-		_fall_speed = jump_speed if jump and not _was_jump else 0.0
-	else:
-		_fall_speed -= _gravity * delta
-	_was_jump = jump
-	velocity = walk + Vector3.UP * _fall_speed
-	move_and_slide()
-
-
-func _update_hand(hand: PhysicsHand, controller: XRController3D, aim: XRController3D) -> void:
-	if not controller.get_has_tracking_data():
+	if not _grounded:
+		# Only ever adds speed up to the stick's: steering doesn't brake a body that's flying faster than that.
+		if wish != Vector3.ZERO and linear_velocity.dot(wish.normalized()) < speed:
+			apply_central_force(wish * air_force)
 		return
+	var goal := wish.slide(_floor_normal).normalized() * wish.length() * speed
+	var error := _floor_velocity + goal - linear_velocity
+	error.y = 0.0
+	var push := (mass * error / delta).limit_length(leg_force)
+	apply_central_force(push)
+	if _floor_body:
+		_floor_body.apply_force(-push, _floor_point - _floor_body.global_position)
+
+
+## Jump with its button, or by flicking the right stick up.
+func _jump() -> void:
+	var jump := not _fit_mode and (_right_controller.is_button_pressed(&"jump") or _right_controller.get_vector2(&"primary").y > 0.8)
+	if jump and not _was_jump and _air_time < JUMP_GRACE:
+		_air_time = JUMP_GRACE
+		var impulse := Vector3.UP * mass * jump_speed
+		apply_central_impulse(impulse)
+		if _floor_body:
+			_floor_body.apply_impulse(-impulse, _floor_point - _floor_body.global_position)
+	_was_jump = jump
+
+
+func _update_hand(hand: PhysicsHand, controller: XRController3D, aim: XRController3D, delta: float) -> void:
+	if not controller.get_has_tracking_data():
+		hand.let_go_of_hold()
+		return
+	var before := hand.target.origin
 	hand.set_target(controller.global_transform)
+	hand.controller_velocity = (hand.target.origin - before) / delta
 	hand.aim_direction = -aim.global_basis.z if aim.get_has_tracking_data() else Vector3.ZERO
 	hand.input_grip = controller.get_float(&"grip")
 	hand.input_trigger = controller.get_float(&"trigger")
@@ -234,6 +392,10 @@ func set_tick_rate(rate: int) -> void:
 	if rate != Engine.physics_ticks_per_second:
 		Engine.physics_ticks_per_second = rate
 		print("Physics tick rate set to ", rate, " Hz")
+
+
+static func _bottom_of(capsule: CollisionShape3D) -> float:
+	return capsule.position.y - (capsule.shape as CapsuleShape3D).height * 0.5
 
 
 static func _nearest_refresh_rate(measured: float) -> int:
