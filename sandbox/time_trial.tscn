@@ -1,0 +1,866 @@
+[gd_scene load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://sandbox/time_trial.gd" id="trial"]
+[ext_resource type="Script" path="res://sandbox/trial_gate.gd" id="gate"]
+[ext_resource type="Script" path="res://sandbox/parkour_block.gd" id="block"]
+[ext_resource type="Script" path="res://sandbox/parkour_pipe.gd" id="pipe"]
+[ext_resource type="Shader" path="res://sandbox/world_grid.gdshader" id="grid"]
+[ext_resource type="Script" path="res://audio/medium_volume.gd" id="medium_volume"]
+[ext_resource type="Resource" path="res://audio/water_medium.tres" id="water_medium"]
+
+[sub_resource type="ShaderMaterial" id="deck"]
+shader = ExtResource("grid")
+shader_parameter/color = Color(0.2, 0.55, 0.55, 1)
+
+[sub_resource type="ShaderMaterial" id="ramp"]
+shader = ExtResource("grid")
+shader_parameter/color = Color(0.8, 0.5, 0.2, 1)
+
+[sub_resource type="ShaderMaterial" id="wall"]
+shader = ExtResource("grid")
+shader_parameter/color = Color(0.62, 0.58, 0.5, 1)
+
+[sub_resource type="ShaderMaterial" id="grapple"]
+shader = ExtResource("grid")
+shader_parameter/color = Color(0.45, 0.35, 0.65, 1)
+
+[sub_resource type="StandardMaterial3D" id="pipe"]
+albedo_color = Color(0.85, 0.22, 0.14, 1)
+metallic = 0.3
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="rock"]
+albedo_color = Color(0.64, 0.59, 0.52, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="crevice"]
+albedo_color = Color(0.05, 0.04, 0.04, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="water_material"]
+transparency = 1
+cull_mode = 2
+shading_mode = 0
+albedo_color = Color(0.15, 0.45, 0.8, 0.35)
+
+[node name="TimeTrial" type="Node3D"]
+script = ExtResource("trial")
+
+[node name="Board" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, 10)
+billboard = 1
+pixel_size = 0.003
+text = "TIME TRIAL"
+font_size = 48
+outline_size = 12
+vertical_alignment = 2
+
+[node name="Gates" type="Node3D" parent="."]
+
+[node name="Start" type="Area3D" parent="Gates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 10)
+script = ExtResource("gate")
+size = Vector3(2, 3, 4)
+title = "START"
+color = Color(0.3, 1, 0.4, 1)
+
+[node name="Sprint" type="Area3D" parent="Gates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1.5, 10)
+script = ExtResource("gate")
+size = Vector3(1, 3, 4)
+title = "SPRINT"
+
+[node name="Slalom" type="Area3D" parent="Gates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 1.5, 10)
+script = ExtResource("gate")
+size = Vector3(1, 3, 4.4)
+title = "SLALOM"
+
+[node name="Steps" type="Area3D" parent="Gates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 4.1, -4.95)
+script = ExtResource("gate")
+size = Vector3(4, 3, 3)
+title = "STEPS"
+
+[node name="Jumps" type="Area3D" parent="Gates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 4.1, -25.45)
+script = ExtResource("gate")
+size = Vector3(4, 3, 4)
+title = "JUMPS"
+
+[node name="SwingJump" type="Area3D" parent="Gates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 5.3, -28.95)
+script = ExtResource("gate")
+size = Vector3(4, 3, 3)
+title = "SWING JUMP"
+
+[node name="Climb" type="Area3D" parent="Gates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31, 5.5, -28.5)
+script = ExtResource("gate")
+size = Vector3(2, 3, 3)
+title = "LADDER AND BARS"
+
+[node name="Rock" type="Area3D" parent="Gates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 6.5, -28.5)
+script = ExtResource("gate")
+size = Vector3(4, 3, 5)
+title = "ROCK WALL"
+
+[node name="Swing" type="Area3D" parent="Gates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 5.5, -28.5)
+script = ExtResource("gate")
+size = Vector3(4, 3, 5)
+title = "GRAPPLE SWING"
+
+[node name="Haul" type="Area3D" parent="Gates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 10.5, -28.5)
+script = ExtResource("gate")
+size = Vector3(4, 3, 3)
+title = "GRAPPLE HAUL"
+
+[node name="Drop" type="Area3D" parent="Gates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 4.5, -14)
+script = ExtResource("gate")
+size = Vector3(5, 3, 6)
+title = "DROP"
+
+[node name="Finish" type="Area3D" parent="Gates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.5, 0)
+script = ExtResource("gate")
+size = Vector3(4, 3, 1)
+title = "FINISH"
+color = Color(1, 1, 1, 1)
+
+[node name="SprintSign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2.6, 13)
+billboard = 1
+pixel_size = 0.004
+text = "1  SPRINT\nClick the left stick to run."
+font_size = 48
+outline_size = 12
+
+[node name="Meter1" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0.4, 12.6)
+billboard = 1
+pixel_size = 0.003
+text = "5 m"
+font_size = 48
+outline_size = 12
+
+[node name="Meter2" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0.4, 12.6)
+billboard = 1
+pixel_size = 0.003
+text = "10 m"
+font_size = 48
+outline_size = 12
+
+[node name="Meter3" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 0.4, 12.6)
+billboard = 1
+pixel_size = 0.003
+text = "15 m"
+font_size = 48
+outline_size = 12
+
+[node name="Meter4" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0.4, 12.6)
+billboard = 1
+pixel_size = 0.003
+text = "20 m"
+font_size = 48
+outline_size = 12
+
+[node name="Meter5" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0.4, 12.6)
+billboard = 1
+pixel_size = 0.003
+text = "25 m"
+font_size = 48
+outline_size = 12
+
+[node name="SlalomSign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31, 3.1, 13.5)
+billboard = 1
+pixel_size = 0.004
+text = "2  SLALOM\nTurn with the right stick."
+font_size = 48
+outline_size = 12
+
+[node name="CorridorNorth" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 1, 12.2)
+script = ExtResource("block")
+size = Vector3(16, 2, 0.4)
+material = SubResource("wall")
+grapple_target = false
+
+[node name="CorridorSouth" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 1, 7.8)
+script = ExtResource("block")
+size = Vector3(16, 2, 0.4)
+material = SubResource("wall")
+grapple_target = false
+
+[node name="Baffle1" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -34, 1, 9.3)
+script = ExtResource("block")
+size = Vector3(0.4, 2, 2.6)
+material = SubResource("wall")
+grapple_target = false
+
+[node name="Baffle2" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -38, 1, 10.7)
+script = ExtResource("block")
+size = Vector3(0.4, 2, 2.6)
+material = SubResource("wall")
+grapple_target = false
+
+[node name="Baffle3" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -42, 1, 9.3)
+script = ExtResource("block")
+size = Vector3(0.4, 2, 2.6)
+material = SubResource("wall")
+grapple_target = false
+
+[node name="Baffle4" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -46, 1, 10.7)
+script = ExtResource("block")
+size = Vector3(0.4, 2, 2.6)
+material = SubResource("wall")
+grapple_target = false
+
+[node name="StepsSign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50.5, 2.8, 7)
+billboard = 1
+pixel_size = 0.004
+text = "3  STEPS AND RAMP\nWalk up."
+font_size = 48
+outline_size = 12
+
+[node name="Step1" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 0.1, 5.7)
+script = ExtResource("block")
+size = Vector3(4, 0.2, 0.6)
+material = SubResource("ramp")
+grapple_target = false
+
+[node name="Step2" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 0.2, 5.1)
+script = ExtResource("block")
+size = Vector3(4, 0.4, 0.6)
+material = SubResource("ramp")
+grapple_target = false
+
+[node name="Step3" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 0.3, 4.5)
+script = ExtResource("block")
+size = Vector3(4, 0.6, 0.6)
+material = SubResource("ramp")
+grapple_target = false
+
+[node name="Step4" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 0.4, 3.9)
+script = ExtResource("block")
+size = Vector3(4, 0.8, 0.6)
+material = SubResource("ramp")
+grapple_target = false
+
+[node name="Step5" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 0.5, 3.3)
+script = ExtResource("block")
+size = Vector3(4, 1, 0.6)
+material = SubResource("ramp")
+grapple_target = false
+
+[node name="Step6" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 0.6, 2.7)
+script = ExtResource("block")
+size = Vector3(4, 1.2, 0.6)
+material = SubResource("ramp")
+grapple_target = false
+
+[node name="Landing" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 0.6, 1.4)
+script = ExtResource("block")
+size = Vector3(4, 1.2, 2)
+material = SubResource("ramp")
+grapple_target = false
+
+[node name="Ramp" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0.939793, 0.341743, 0, 0.341743, -0.939793, -54, 1.712041, -1.593349)
+script = ExtResource("block")
+size = Vector3(4, 0.4, 4.096645)
+material = SubResource("ramp")
+grapple_target = false
+
+[node name="RampTop" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 1.3, -4.95)
+script = ExtResource("block")
+size = Vector3(4, 2.6, 3)
+material = SubResource("deck")
+grapple_target = false
+
+[node name="JumpsSign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50.5, 4.8, -8.5)
+billboard = 1
+pixel_size = 0.004
+text = "4  JUMPS\nRun at the long one."
+font_size = 48
+outline_size = 12
+
+[node name="Hop1" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 1.3, -9.45)
+script = ExtResource("block")
+size = Vector3(4, 2.6, 3)
+material = SubResource("deck")
+grapple_target = false
+
+[node name="Hop2" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 1.3, -16.45)
+script = ExtResource("block")
+size = Vector3(4, 2.6, 6)
+material = SubResource("deck")
+grapple_target = false
+
+[node name="Hop3" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 1.3, -25.45)
+script = ExtResource("block")
+size = Vector3(4, 2.6, 4)
+material = SubResource("deck")
+grapple_target = false
+
+[node name="SwingJumpSign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50.5, 5.4, -24)
+billboard = 1
+pixel_size = 0.004
+text = "5  SWING JUMP\nToo high for a plain jump.\nSwing both arms up as you jump,\nabout two steps out from the wall."
+font_size = 48
+outline_size = 12
+
+[node name="SwingWall" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -54, 1.9, -28.95)
+script = ExtResource("block")
+size = Vector3(4, 3.8, 3)
+material = SubResource("deck")
+grapple_target = false
+
+[node name="ClimbSign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -46, 3.4, -24.5)
+billboard = 1
+pixel_size = 0.004
+text = "6  LADDER AND BARS\nSlide down, climb the ladder and jump at the top to mantle.\nThen hang from the bars to get across."
+font_size = 48
+outline_size = 12
+
+[node name="Slide" type="StaticBody3D" parent="."]
+transform = Transform3D(0, 0.819232, 0.573462, 0, 0.573462, -0.819232, -1, 0, 0, -50.833846, 1.785308, -28.95)
+script = ExtResource("block")
+size = Vector3(3, 0.4, 4.638491)
+material = SubResource("ramp")
+grapple_target = false
+
+[node name="LadderTower" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -41, 2, -28.5)
+script = ExtResource("block")
+size = Vector3(2, 4, 3)
+material = SubResource("wall")
+grapple_target = false
+
+[node name="LadderRailR" type="StaticBody3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -42.1, 2, -28.22)
+script = ExtResource("pipe")
+length = 4
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="LadderRailL" type="StaticBody3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -42.1, 2, -28.78)
+script = ExtResource("pipe")
+length = 4
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Rung1" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -42.1, 0.38, -28.5)
+script = ExtResource("pipe")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Rung2" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -42.1, 0.76, -28.5)
+script = ExtResource("pipe")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Rung3" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -42.1, 1.14, -28.5)
+script = ExtResource("pipe")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Rung4" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -42.1, 1.52, -28.5)
+script = ExtResource("pipe")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Rung5" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -42.1, 1.9, -28.5)
+script = ExtResource("pipe")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Rung6" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -42.1, 2.28, -28.5)
+script = ExtResource("pipe")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Rung7" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -42.1, 2.66, -28.5)
+script = ExtResource("pipe")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Rung8" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -42.1, 3.04, -28.5)
+script = ExtResource("pipe")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Rung9" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -42.1, 3.42, -28.5)
+script = ExtResource("pipe")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Rung10" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -42.1, 3.8, -28.5)
+script = ExtResource("pipe")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="BarRailR" type="StaticBody3D" parent="."]
+transform = Transform3D(0, 1, 0, 0, 0, 1, 1, 0, 0, -36, 5.85, -28)
+script = ExtResource("pipe")
+length = 9.2
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="BarRailL" type="StaticBody3D" parent="."]
+transform = Transform3D(0, 1, 0, 0, 0, 1, 1, 0, 0, -36, 5.85, -29)
+script = ExtResource("pipe")
+length = 9.2
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar1" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -40.4, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar2" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -39.95, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar3" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -39.5, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar4" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -39.05, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar5" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -38.6, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar6" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -38.15, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar7" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -37.7, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar8" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -37.25, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar9" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -36.8, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar10" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -36.35, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar11" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -35.9, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar12" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -35.45, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar13" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -35, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar14" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -34.55, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar15" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -34.1, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar16" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -33.65, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar17" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -33.2, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar18" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -32.75, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar19" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -32.3, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="Bar20" type="StaticBody3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 0, 1, 0, 1, 0, -31.85, 5.85, -28.5)
+script = ExtResource("pipe")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+grapple_target = false
+
+[node name="BarTower" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31, 2, -28.5)
+script = ExtResource("block")
+size = Vector3(2, 4, 3)
+material = SubResource("wall")
+grapple_target = false
+
+[node name="StepDown" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -29, 1, -28.5)
+script = ExtResource("block")
+size = Vector3(2, 2, 3)
+material = SubResource("ramp")
+grapple_target = false
+
+[node name="RockSign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25.5, 3.2, -25)
+billboard = 1
+pixel_size = 0.004
+text = "7  ROCK WALL\nGrip the dark crevices. Go up, traverse left,\nand jump on the lip at the top to mantle."
+font_size = 48
+outline_size = 12
+
+[node name="Rock" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 2.5, -28.5)
+script = ExtResource("block")
+size = Vector3(4, 5, 5)
+material = SubResource("rock")
+grapple_target = false
+
+[node name="Crevice1" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 1, -27.4)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="Crevice2" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 1.1, -28.1)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="Crevice3" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 1.6, -27.7)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="Crevice4" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 2.1, -27.3)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="Crevice5" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 2.2, -28.1)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="Crevice6" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 2.7, -27.7)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="Crevice7" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 3.2, -27.4)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="Crevice8" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 3.3, -28.1)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="Crevice9" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 3.2, -28.7)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="Crevice10" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 3.4, -29.3)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="Crevice11" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 3.2, -29.9)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="Crevice12" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 3.4, -30.5)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="Crevice13" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 3.9, -30.1)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="Crevice14" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.01, 4.4, -30.6)
+script = ExtResource("block")
+size = Vector3(0.03, 0.05, 0.5)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="RockLip" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.02, 4.98, -30.2)
+script = ExtResource("block")
+size = Vector3(0.06, 0.05, 1.6)
+material = SubResource("crevice")
+climbable = true
+grapple_target = false
+
+[node name="SwingSign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 7.6, -25)
+billboard = 1
+pixel_size = 0.004
+text = "8  GRAPPLE SWING\nPoint an empty hand at the purple beam,\nsqueeze the trigger and swing across."
+font_size = 48
+outline_size = 12
+
+[node name="SwingBeam" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 12, -28.5)
+script = ExtResource("block")
+size = Vector3(1, 0.6, 6)
+material = SubResource("grapple")
+
+[node name="SwingTower" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 2, -28.5)
+script = ExtResource("block")
+size = Vector3(4, 4, 5)
+material = SubResource("deck")
+grapple_target = false
+
+[node name="HaulSign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 7.2, -25)
+billboard = 1
+pixel_size = 0.004
+text = "9  GRAPPLE HAUL\nCatch the beam over the tall tower\nand pull your arm back to haul yourself up."
+font_size = 48
+outline_size = 12
+
+[node name="HaulTower" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 4.5, -28.5)
+script = ExtResource("block")
+size = Vector3(4, 9, 3)
+material = SubResource("wall")
+grapple_target = false
+
+[node name="HaulBeam" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 12.5, -28.5)
+script = ExtResource("block")
+size = Vector3(1, 0.5, 3)
+material = SubResource("grapple")
+
+[node name="DropSign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.8, 11.6, -26)
+billboard = 1
+pixel_size = 0.004
+text = "10  DROP\nSwing from the purple hook and let go\nover the platform. Bullet time helps."
+font_size = 48
+outline_size = 12
+
+[node name="Hook" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 11, -20.5)
+script = ExtResource("block")
+size = Vector3(0.8, 0.8, 0.8)
+material = SubResource("grapple")
+
+[node name="DropDeck" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.5, -14)
+script = ExtResource("block")
+size = Vector3(5, 3, 6)
+material = SubResource("deck")
+grapple_target = false
+
+[node name="WadeSign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.5, 2.6, -9)
+billboard = 1
+pixel_size = 0.004
+text = "11  WADE\nThrough the water to the finish."
+font_size = 48
+outline_size = 12
+
+[node name="Water" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.6, -6)
+script = ExtResource("medium_volume")
+medium = ExtResource("water_medium")
+size = Vector3(4, 1.2, 8)
+material = SubResource("water_material")

@@ -1,6 +1,10 @@
 @tool
 extends StaticBody3D
-## A pipe, rung or bar on the parkour course, running along its local Y. Unlike a block, a hand can grip it.
+## A pipe, rung or bar on the parkour course, running along its local Y. Unlike a block, a hand can grip it. The grapple
+## catches it too, unless told not to.
+
+## Layer 12, what the grapple catches.
+const GRAPPLE_TARGET_LAYER := 2048
 
 @export var length := 1.0:
 	set(value):
@@ -14,14 +18,15 @@ extends StaticBody3D
 	set(value):
 		material = value
 		_refresh()
+@export var grapple_target := true
 
 var _mesh := CylinderMesh.new()
 var _shape := CylinderShape3D.new()
 
 
 func _ready() -> void:
-	# World, climbable and grapple target. Nothing pushes a static body, so it needs no mask.
-	collision_layer = 3073
+	# World, climbable, and grapple target if it is. Nothing pushes a static body, so it needs no mask.
+	collision_layer = 1 | PhysicsHand.CLIMBABLE_LAYER | (GRAPPLE_TARGET_LAYER if grapple_target else 0)
 	collision_mask = 0
 	set_meta(&"surface", Sounds.Surface.METAL)
 	_mesh.radial_segments = 12

@@ -1,4 +1,4 @@
-[gd_scene load_steps=36 format=3]
+[gd_scene load_steps=37 format=3]
 
 [ext_resource type="Script" path="res://sandbox/range.gd" id="1"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="2"]
@@ -11,6 +11,7 @@
 [ext_resource type="Shader" path="res://sandbox/world_grid.gdshader" id="9"]
 [ext_resource type="PackedScene" path="res://sandbox/dummy.tscn" id="10"]
 [ext_resource type="PackedScene" path="res://sandbox/block_course.tscn" id="11"]
+[ext_resource type="PackedScene" path="res://sandbox/time_trial.tscn" id="time_trial"]
 [ext_resource type="Script" path="res://audio/impact_sound.gd" id="impact_sound"]
 [ext_resource type="Script" path="res://audio/medium_volume.gd" id="medium_volume"]
 [ext_resource type="Resource" path="res://audio/water_medium.tres" id="water_medium"]
@@ -267,6 +268,10 @@ surface_material_override/0 = SubResource("paper")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, 2)
 
 [node name="Parkour" parent="." instance=ExtResource("8")]
+
+[node name="TimeTrial" parent="." node_paths=PackedStringArray("player") instance=ExtResource("time_trial")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0, 0)
+player = NodePath("../Player")
 
 [node name="ImpactSound" type="Node" parent="Crate1"]
 script = ExtResource("impact_sound")
