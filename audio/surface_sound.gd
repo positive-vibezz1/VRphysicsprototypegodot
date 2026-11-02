@@ -70,6 +70,14 @@ func dulling(contact: float, frequency: float) -> float:
 	return minf(maxf(_contact_loss(contact, frequency) - _contact_loss(baked, frequency), 0.0), MOST_DULLING)
 
 
+## How much of the take's ringing a contact this long sets off, as a volume. A thing can't ring faster than it's let go
+## of: a padded hand stays on steel for 7 ms, and the plate's lowest mode goes around 4 times in that.
+func excitation(contact: float) -> float:
+	var lowest := modes[0].x
+	var baked := hard_contact if is_hard(contact) else soft_contact
+	return minf((1.0 + pow(lowest * baked, 2.0)) / (1.0 + pow(lowest * contact, 2.0)), 1.0)
+
+
 static func _contact_loss(contact: float, frequency: float) -> float:
 	return linear_to_db(1.0 + pow(frequency * contact, 2.0))
 

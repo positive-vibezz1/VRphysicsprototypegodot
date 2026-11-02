@@ -23,7 +23,7 @@ const MOST_WRIST_CHANGE := 30.0
 const MOST_SPIN := 45.0
 ## What closes on something when a hand grips it: the fingers. Slower than this still makes a sound, since a hold
 ## taken with the hand at rest still has the fingers moving.
-const FINGERS_MASS := 0.2
+const FINGERS_MASS := 0.05
 const SLOWEST_GRIP := 1.0
 
 ## Arm stiffness with an empty hand. The tick rate may cap it.
@@ -433,7 +433,7 @@ func _on_touched(body: Node) -> void:
 
 
 func _grip_sound(on: Object) -> void:
-	Sounds.pool.soft_hit(global_position, FINGERS_MASS, maxf(linear_velocity.length(), SLOWEST_GRIP), on)
+	Sounds.pool.soft_hit(global_position, FINGERS_MASS, mass, maxf(linear_velocity.length(), SLOWEST_GRIP), on)
 
 
 func _pulse(amplitude: float, duration: float, frequency := 0.0) -> void:

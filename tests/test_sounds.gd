@@ -364,3 +364,11 @@ func test_a_bolt_stop_stays_well_under_the_shot() -> void:
 			assert_lt(sound["volume"] as float, 0.2, "a bolt on its stop is nothing next to the shot")
 			assert_lt(sound["pitch"] as float, 0.8, "and rings at the pitch of the whole rifle")
 	assert_gt(stops, 0)
+
+
+func test_a_long_contact_hardly_sets_steel_ringing_and_a_short_one_does() -> void:
+	var metal := Sounds.pool.sound_of(Sounds.Surface.METAL)
+	assert_lt(metal.excitation(0.007), 0.1, "a hand on steel")
+	assert_eq(metal.excitation(0.00005), 1.0, "a bullet on steel")
+	assert_eq(metal.excitation(metal.hard_contact), 1.0, "a contact like the one it was baked for")
+

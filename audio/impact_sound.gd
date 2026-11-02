@@ -12,6 +12,9 @@ const SHORTEST_GAP := 0.06
 @export var surface := Sounds.Surface.METAL
 ## The mass of everything held rigidly to this body, which rings as one. 0 is just the body.
 @export var ringing_mass := 0.0
+## How much of a hit's energy comes out as sound. Hard things hardly lose any of it on the way, but something padded
+## takes nearly all of it into itself.
+@export var sound_share := 1.0
 
 var _velocity := Vector3.ZERO
 var _touching := false
@@ -22,6 +25,8 @@ var _next_frame := 0
 
 func _ready() -> void:
 	_body.set_meta(&"surface", surface)
+	if ringing_mass > 0.0:
+		_body.set_meta(&"ringing_mass", ringing_mass)
 	_body.contact_monitor = true
 	_body.max_contacts_reported = maxi(_body.max_contacts_reported, 4)
 
@@ -55,7 +60,7 @@ func _physics_process(_delta: float) -> void:
 	# A bullet reports its own hits, and a stock on a shoulder is no knock.
 	if collider is Bullet or collider is AnimatableBody3D:
 		return
-	var energy := 0.5 * impulse * strike * strike / closing
+	var energy := 0.5 * impulse * strike * strike / closing * sound_share
 	var point := state.get_contact_local_position(strongest)
 	var other := collider as RigidBody3D
 	Sounds.pool.impact(

@@ -505,3 +505,60 @@ func test_grabbing_makes_a_sound_of_the_glove_and_what_it_closed_on() -> void:
 	Sounds.pool.played.disconnect(listener)
 	assert_has(surfaces, Sounds.Surface.SOFT)
 	assert_has(surfaces, Sounds.Surface.GUN)
+
+
+func _sounds_during(sounds: Array[Dictionary]) -> Callable:
+	var listener := func(surface: Sounds.Surface, _energy: float, volume: float, pitch: float) -> void:
+		sounds.append({"surface": surface, "volume": volume, "pitch": pitch})
+	Sounds.pool.played.connect(listener)
+	return listener
+
+
+func test_a_grip_is_a_quiet_hand_on_the_whole_gun() -> void:
+	var at := Vector3(88, 100, 0)
+	var gun := _gun(PISTOL_SCENE, at)
+	var hand := _hand(at)
+	await wait_physics_frames(50)
+	var sounds: Array[Dictionary] = []
+	var listener := _sounds_during(sounds)
+	_hold(hand, gun.grip)
+	Sounds.pool.played.disconnect(listener)
+	assert_eq(sounds.size(), 2, str(sounds))
+	for sound: Dictionary in sounds:
+		assert_lt(sound["volume"] as float, 0.1, "far under a shot")
+		# Hand and pistol both about the masses their sounds are tuned for, not the fingers or just the frame.
+		assert_between(sound["pitch"] as float, 0.9, 1.2)
+
+
+func test_a_hand_hitting_steel_is_a_quiet_thud_with_hardly_a_ring() -> void:
+	var at := Vector3(92, 100, 0)
+	var wall := StaticBody3D.new()
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.1, 2, 2)
+	shape.shape = box
+	wall.add_child(shape)
+	wall.position = at + Vector3(0.3, 0, 0)
+	wall.set_meta(&"surface", Sounds.Surface.METAL)
+	add_child_autofree(wall)
+	var hand := _hand(at)
+	await wait_physics_frames(50)
+	var sounds: Array[Dictionary] = []
+	var listener := _sounds_during(sounds)
+	# A hard swing through the wall, at 5 m/s.
+	var pose := Transform3D(LEVEL_GRIP, at)
+	for i: int in 30:
+		pose.origin.x += 5.0 / 90.0
+		hand.set_target(pose)
+		await wait_physics_frames(1)
+	Sounds.pool.played.disconnect(listener)
+	var thud := 0.0
+	var ring := 0.0
+	for sound: Dictionary in sounds:
+		if sound["surface"] == Sounds.Surface.SOFT:
+			thud = maxf(thud, sound["volume"] as float)
+		elif sound["surface"] == Sounds.Surface.METAL:
+			ring = maxf(ring, sound["volume"] as float)
+	assert_gt(thud, 0.0, "a hand does make a sound")
+	assert_lt(thud, 0.2, "not a loud one")
+	assert_lt(ring, thud * 0.5, "and it's mostly the hand you hear, not the steel")

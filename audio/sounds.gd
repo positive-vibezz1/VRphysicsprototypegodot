@@ -59,11 +59,13 @@ var _voices: Array[AudioStreamPlayer3D] = []
 ## What each voice's sound came to at the ear when it started.
 var _heard := PackedFloat32Array()
 var _next_frame := PackedInt64Array()
-var _last_volume := PackedFloat32Array()
+var _last_volume := PackedFloat64Array()
 var _quiet_until := 0
 var _rng := RandomNumberGenerator.new()
 var _waiting: Array[Waiting] = []
 var _waiting_count := 0
+## One for each surface, so both sides of a hit get a line.
+var _log_keys: Array[StringName] = []
 
 
 func _ready() -> void:
@@ -72,6 +74,8 @@ func _ready() -> void:
 	add_child(acoustics)
 	for i: int in WAITING_COUNT:
 		_waiting.append(Waiting.new())
+	for surface_name: String in Surface.keys():
+		_log_keys.append(StringName("sound_" + surface_name))
 	# Seeded so every run bakes the same sounds, to tune by ear against.
 	var bake_rng := RandomNumberGenerator.new()
 	bake_rng.seed = 1
@@ -129,13 +133,13 @@ func sound_of(surface: Surface) -> SurfaceSound:
 ## Rings one surface, hit by another. A mass is of the body, or 0 for something that doesn't give, like part of the world.
 func impact(position: Vector3, surface: Surface, energy: float, speed: float, mass := 0.0, against := Surface.CONCRETE, against_mass := 0.0) -> void:
 	var sound := _surfaces[surface]
-	var volume := loudness(energy) * sound.level
+	var moving := mass * against_mass / (mass + against_mass) if mass > 0.0 and against_mass > 0.0 else maxf(mass, against_mass)
+	var contact := SurfaceSound.contact_time(sound, _surfaces[against], moving, speed)
+	var volume := loudness(energy) * sound.level * sound.excitation(contact)
 	var frame := Engine.get_physics_frames()
 	if frame < _quiet_until or (frame < _next_frame[surface] and volume <= _last_volume[surface]):
 		return
 	var take := _next_take[surface]
-	var moving := mass * against_mass / (mass + against_mass) if mass > 0.0 and against_mass > 0.0 else maxf(mass, against_mass)
-	var contact := SurfaceSound.contact_time(sound, _surfaces[against], moving, speed)
 	var pitch := sound.pitch_for(mass, MediumVolume.medium_at(position).density) * _rng.randf_range(1.0 - PITCH_SPREAD, 1.0 + PITCH_SPREAD)
 	if not play(stream_of(surface, sound.is_hard(contact), take), position, volume, pitch, UNIT_SIZE, sound.dulling(contact, Acoustics.HIGH_BAND)):
 		return
@@ -143,7 +147,7 @@ func impact(position: Vector3, surface: Surface, energy: float, speed: float, ma
 	_next_frame[surface] = frame + SURFACE_GAP
 	_last_volume[surface] = volume
 	played.emit(surface, energy, volume, pitch)
-	if DebugLog.due(&"sound", 0.1):
+	if DebugLog.due(_log_keys[surface], 0.1):
 		DebugLog.event("sound", "%s on %s %.3f J at %.1f m/s, %.2f ms contact: %.0f dB, pitch %.2f, %.0f dB and %.0f dB of highs on the way, %.0f ms late" % [
 			Surface.keys()[surface], Surface.keys()[against], energy, speed, contact * 1000.0, linear_to_db(volume), pitch,
 			linear_to_db(acoustics.gain), acoustics.shelf, acoustics.delay * 1000.0
@@ -156,15 +160,20 @@ func impact_on(collider: Object, position: Vector3, energy: float, speed: float,
 	var surface := surface_of(collider)
 	var body := collider as RigidBody3D
 	var struck_mass := body.mass if body else _surfaces[surface].reference_mass
-	impact(position, surface, energy * hitter_mass / (hitter_mass + struck_mass), speed, body.mass if body else 0.0, hitter, hitter_mass)
+	impact(position, surface, energy * hitter_mass / (hitter_mass + struck_mass), speed, _ringing_mass(body), hitter, hitter_mass)
 
 
-## Something padded coming down on something: a foot on the ground, or fingers closing on a gun.
-func soft_hit(position: Vector3, mass: float, speed: float, on: Object) -> void:
+## Something padded coming down on something: a foot on the ground, or fingers closing on a gun. The mass is what comes
+## down, and the ringing mass all of what it's part of, since fingers sound like a hand and not like something tiny.
+func soft_hit(position: Vector3, mass: float, ringing_mass: float, speed: float, on: Object) -> void:
 	var energy := 0.5 * mass * speed * speed
-	var body := on as RigidBody3D
-	impact(position, Surface.SOFT, energy, speed, mass, surface_of(on), body.mass if body else 0.0)
+	impact(position, Surface.SOFT, energy, speed, ringing_mass, surface_of(on), _ringing_mass(on as RigidBody3D))
 	impact_on(on, position, energy, speed, mass, Surface.SOFT)
+
+
+## What rings when this body is hit: 0 for no body, and all of a gun for any part of it.
+static func _ringing_mass(body: RigidBody3D) -> float:
+	return body.get_meta(&"ringing_mass", body.mass) if body else 0.0
 
 
 ## Sends a sound on its way to the ear, and its echoes if it's loud enough to have any. Returns whether any of it will
