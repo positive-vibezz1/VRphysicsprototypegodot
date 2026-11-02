@@ -1,16 +1,23 @@
 class_name GrabPoint
 extends Marker3D
-## A place a hand can take hold of. The parent must be the rigid body that gets held.
+## A place a hand can take hold of. The parent must be the rigid body that gets held. The marker's pose is where
+## the palm goes, its -Z along the part the fingers wrap, and its origin in the middle of that part.
 ## SNAP brings the point into the palm and locks it rigidly: firing grips and loose magazines.
-## PIN holds the body where the hand touched it and leaves rotation free: handguard, slide, charging handle.
+## SUPPORT brings the palm to the point and locks it rigidly: spots for a second hand on a gun already held.
+## PIN holds the body where the hand touched it and leaves rotation free: slide, charging handle.
 
-enum Mode { SNAP, PIN }
+enum Mode { SNAP, PIN, SUPPORT }
+## How a right hand takes a point laid out for a left hand.
+enum RightHand { SAME, TURNED, MIRRORED }
 
 @export var mode := Mode.SNAP
 @export var radius := 0.1
-## Half length of the grabbable segment along the local Z axis, for long parts like a handguard.
-@export var half_length := 0.0
 @export var enabled := true
+@export var right_hand := RightHand.SAME
+## How far the fingers close here: 1 is a fist, and lower wraps something thicker. 0.55 fits a 44 mm grip.
+@export var finger_closure := 0.55
+## A second hand far along the gun steers it, so the wrists give way to it. One right by the grip can't.
+@export var steers := false
 ## Where the palm ends up relative to this point, along its local axes. A hand can hold a part well away from
 ## itself, so two real controllers don't collide when the part has to go somewhere close to the other hand.
 @export var palm_offset := Vector3.ZERO
@@ -33,9 +40,7 @@ func _exit_tree() -> void:
 
 ## How far outside this point's reach a position is. Negative means in reach.
 func reach_distance(from: Vector3) -> float:
-	var local := to_local(from)
-	local.z -= clampf(local.z, -half_length, half_length)
-	return local.length() - radius
+	return to_local(from).length() - radius
 
 
 ## Inertia the hand has to turn when holding this point, about the palm along the held body's axes.
@@ -54,10 +59,22 @@ func carried_inertia(palm: Vector3) -> Vector3:
 
 
 ## The palm's pose when holding this point, relative to the held body.
-func palm_pose() -> Transform3D:
-	return transform.translated_local(palm_offset)
+func palm_pose(left_hand := true) -> Transform3D:
+	var pose := transform.translated_local(palm_offset)
+	if not left_hand:
+		match right_hand:
+			RightHand.TURNED:
+				pose.basis *= Basis(Vector3.BACK, PI)
+			RightHand.MIRRORED:
+				pose.origin.x = -pose.origin.x
+	return pose
+
+
+## The same in world space.
+func palm_transform(left_hand := true) -> Transform3D:
+	return body.global_transform * palm_pose(left_hand)
 
 
 ## Teleports the owning gun or magazine so that the palm pose lands on the given transform.
-func snap_to(target: Transform3D) -> void:
-	owner.teleport(target * global_transform.translated_local(palm_offset).affine_inverse())
+func snap_to(target: Transform3D, left_hand := true) -> void:
+	owner.teleport(target * palm_transform(left_hand).affine_inverse())

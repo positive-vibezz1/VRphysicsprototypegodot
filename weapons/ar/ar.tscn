@@ -614,15 +614,35 @@ transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.11, -0.065)
 mesh = SubResource("rear_aperture")
 
 [node name="Grip" type="Marker3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 0.309017, -0.951057, 0, 0.951057, 0.309017, 0, -0.03, 0.02)
+transform = Transform3D(1, 0, 0, 0, 0.309017, -0.951057, 0, 0.951057, 0.309017, 0, -0.03, 0.018)
 script = ExtResource("5")
 
-[node name="HandguardGrab" type="Marker3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -0.305)
+[node name="Handguard1" type="Marker3D" parent="Frame"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0.055, -0.225)
 script = ExtResource("5")
-mode = 1
-radius = 0.09
-half_length = 0.12
+mode = 2
+radius = 0.07
+right_hand = 1
+finger_closure = 0.35
+steers = true
+
+[node name="Handguard2" type="Marker3D" parent="Frame"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0.055, -0.305)
+script = ExtResource("5")
+mode = 2
+radius = 0.07
+right_hand = 1
+finger_closure = 0.35
+steers = true
+
+[node name="Handguard3" type="Marker3D" parent="Frame"]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0.055, -0.385)
+script = ExtResource("5")
+mode = 2
+radius = 0.07
+right_hand = 1
+finger_closure = 0.35
+steers = true
 
 [node name="Muzzle" type="Marker3D" parent="Frame"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.055, -0.528)

@@ -32,6 +32,7 @@ const MAX_STEP_STIFFNESS := 0.4
 @export var model_scene: PackedScene
 ## Force a fully squeezed trigger puts on the gun's trigger, about 10 lb.
 @export var max_finger_force := 45.0
+@export var is_left := false
 ## Pointing at a gun or magazine this close shows a laser, and squeezing brings it to the hand.
 @export var remote_grab_range := 1.5
 ## How far off the pointing direction still counts as pointing at it.
@@ -60,7 +61,10 @@ var _fit := Transform3D.IDENTITY
 var _joint: Joint3D
 ## Inertia of hand and held parts about the palm, along the held body's axes. Set when grabbing.
 var _carried_inertia := Vector3.ZERO
-var _previous_target := Transform3D.IDENTITY
+var _previous_goal := Transform3D.IDENTITY
+## Where this body should sit relative to the controller. A support hand snaps away from the controller to its
+## spot on the gun, and keeps that offset so grabbing doesn't yank the gun back toward the controller.
+var _hold_offset := Transform3D.IDENTITY
 var _target_valid := false
 var _grip_armed := true
 var _was_mag_release := false
@@ -90,7 +94,7 @@ func set_target(pose: Transform3D) -> void:
 	target = pose
 	if not _target_valid:
 		_target_valid = true
-		_previous_target = pose
+		_previous_goal = pose
 		global_transform = pose
 
 
@@ -101,7 +105,7 @@ func _physics_process(delta: float) -> void:
 	_update_grab()
 	_update_held_controls()
 	if _fingers:
-		_fingers.set("parameters/Grip/blend_amount", 1.0 if held else input_grip)
+		_fingers.set("parameters/Grip/blend_amount", held.finger_closure if held else input_grip)
 		# On a firing grip the index finger rests on the trigger instead of pointing over the slide.
 		var on_trigger := held != null and held.owner is Gun and held == (held.owner as Gun).grip
 		_fingers.set("parameters/Trigger/blend_amount", lerpf(TRIGGER_FINGER_REST, 1.0, input_trigger) if on_trigger else input_trigger)
@@ -109,20 +113,21 @@ func _physics_process(delta: float) -> void:
 
 func _track(delta: float) -> void:
 	var state := PhysicsServer3D.body_get_direct_state(get_rid())
-	var to_target := target.origin - state.transform.origin
+	var goal := target * _hold_offset
+	var to_target := goal.origin - state.transform.origin
 	if to_target.length() > max_separation:
 		release()
 		global_transform = target
 		state.linear_velocity = Vector3.ZERO
 		state.angular_velocity = Vector3.ZERO
-		_previous_target = target
+		_previous_goal = target
 		return
 
 	var carried := 0.0
 	if held:
 		carried = held.owner.held_mass() if held.mode == GrabPoint.Mode.SNAP else held.body.mass
 
-	var target_velocity := (target.origin - _previous_target.origin) / delta
+	var target_velocity := (goal.origin - _previous_goal.origin) / delta
 	var total_mass := mass + carried
 	var stiffness := linear_stiffness / (1.0 + carried / arm_softening_mass)
 	var pull := minf(stiffness, MAX_STEP_STIFFNESS * total_mass / (delta * delta))
@@ -131,15 +136,15 @@ func _track(delta: float) -> void:
 	apply_central_force(force.limit_length(max_force))
 
 	var current_rotation := state.transform.basis.get_rotation_quaternion()
-	var target_rotation := target.basis.get_rotation_quaternion()
+	var target_rotation := goal.basis.get_rotation_quaternion()
 	var angle_error := _rotation_vector(target_rotation * current_rotation.inverse())
-	var target_spin := _rotation_vector(target_rotation * _previous_target.basis.get_rotation_quaternion().inverse()) / delta
+	var target_spin := _rotation_vector(target_rotation * _previous_goal.basis.get_rotation_quaternion().inverse()) / delta
 	var spin_error := target_spin - state.angular_velocity
 	# Work along the held body's axes: a long AR is much harder to pitch than to roll.
 	var axes := held.body.global_basis if held else state.transform.basis
 	var angle_along := axes.inverse() * angle_error
 	var spin_along := axes.inverse() * spin_error
-	var wrist := angular_stiffness * (two_hand_wrist_scale if _is_two_handed() else 1.0)
+	var wrist := angular_stiffness * (two_hand_wrist_scale if _is_steered() else 1.0)
 	var torque := Vector3(
 		_axis_torque(angle_along.x, spin_along.x, wrist, inertia.x + _carried_inertia.x, delta),
 		_axis_torque(angle_along.y, spin_along.y, wrist, inertia.y + _carried_inertia.y, delta),
@@ -147,7 +152,7 @@ func _track(delta: float) -> void:
 	)
 	apply_torque((axes * torque).limit_length(max_torque))
 
-	_previous_target = target
+	_previous_goal = goal
 
 
 ## Grabbing happens on the squeeze, so a hand still squeezing after a magazine clicks home grabs nothing else.
@@ -229,7 +234,14 @@ func grab(point: GrabPoint) -> void:
 	held = point
 	point.holder = self
 	if point.mode == GrabPoint.Mode.SNAP:
-		point.snap_to(global_transform * _fit)
+		point.snap_to(global_transform * _fit, is_left)
+		_joint = Generic6DOFJoint3D.new()
+	elif point.mode == GrabPoint.Mode.SUPPORT:
+		global_transform = point.palm_transform(is_left) * _fit.affine_inverse()
+		linear_velocity = point.body.linear_velocity
+		angular_velocity = point.body.angular_velocity
+		_hold_offset = target.affine_inverse() * global_transform
+		_previous_goal = global_transform
 		_joint = Generic6DOFJoint3D.new()
 	else:
 		_joint = PinJoint3D.new()
@@ -255,6 +267,8 @@ func release() -> void:
 	_joint.queue_free()
 	_joint = null
 	_carried_inertia = Vector3.ZERO
+	_previous_goal = target * _hold_offset
+	_hold_offset = Transform3D.IDENTITY
 	_notify_owner(point)
 	if point.owner is Gun:
 		var gun: Gun = point.owner
@@ -274,8 +288,10 @@ func regrab_as_pin() -> void:
 	_joint.node_b = _joint.get_path_to(held.body)
 
 
-func _is_two_handed() -> bool:
-	return held != null and other_hand != null and other_hand.held != null and other_hand.held.body == held.body
+func _is_steered() -> bool:
+	if not held or not other_hand or not other_hand.held or other_hand.held.body != held.body:
+		return false
+	return held.steers or other_hand.held.steers
 
 
 func _notify_owner(point: GrabPoint) -> void:

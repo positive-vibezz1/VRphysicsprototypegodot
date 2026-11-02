@@ -42,10 +42,9 @@ nodes/Trigger/position = Vector2(-360, 20)
 node_connections = [&"Grip", 0, &"Trigger", &"Grip", 1, &"ClosedFingers", &"Trigger", 0, &"Open", &"Trigger", 1, &"ClosedIndex", &"output", 0, &"Grip"]
 
 [node name="HandLeft" type="Node3D"]
-transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 0, 0)
+transform = Transform3D(0.994469, 0.104370, -0.011726, -0.000000, 0.111646, 0.993748, 0.105027, -0.988252, 0.111028, -0.024883, 0.073437, -0.002427)
 
 [node name="Hand_low_L" parent="." instance=ExtResource("1")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.01, 0, 0.05)
 
 [node name="mesh_Hand_low_L" parent="Hand_low_L/Armature/Skeleton3D" index="0"]
 surface_material_override/0 = ExtResource("2")

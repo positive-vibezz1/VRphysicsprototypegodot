@@ -45,6 +45,7 @@ pose = &"aim"
 
 [node name="LeftHand" parent="." instance=ExtResource("2")]
 model_scene = ExtResource("3")
+is_left = true
 
 [node name="FitLabel" type="Label3D" parent="LeftHand"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.14)

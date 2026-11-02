@@ -190,7 +190,7 @@ func test_ar_two_handed_points_along_the_hands_and_fires() -> void:
 	await wait_physics_frames(2)
 	_hold(primary, gun.grip)
 	await wait_physics_frames(45)
-	var support_at: Vector3 = (gun.frame.get_node("HandguardGrab") as Node3D).global_position
+	var support_at: Vector3 = (gun.frame.get_node("Handguard2") as Node3D).global_position
 	var support := _hand(support_at)
 	primary.other_hand = support
 	support.other_hand = primary
@@ -325,8 +325,8 @@ func test_the_whole_hand_stops_at_a_table() -> void:
 	add_child_autofree(table)
 	table.global_position = Vector3(150, 100, 0)
 	var top := 100.1
-	# Fingers straight down: the fingertips reach about 13 cm below the palm.
-	var fingers_down := Basis(Vector3.RIGHT, deg_to_rad(-45.0))
+	# Fingers straight down: the fingertips reach about 11 cm below the palm.
+	var fingers_down := Basis.IDENTITY
 	var above := Vector3(150, top + 0.3, 0)
 	var hand := _hand(above)
 	hand.set_target(Transform3D(fingers_down, above))
@@ -386,6 +386,97 @@ func test_laser_does_not_offer_a_part_of_a_gun() -> void:
 	hand.aim_direction = at.direction_to(slide.global_position)
 	await wait_physics_frames(2)
 	assert_ne(hand.remote_target, slide, "the slide needs a hand on it")
+
+
+func test_support_hand_snaps_to_the_nearest_handguard_spot() -> void:
+	var at := Vector3(200, 100, 0)
+	var gun := _gun(AR_SCENE, at)
+	var primary := _hand(at)
+	await wait_physics_frames(2)
+	_hold(primary, gun.grip)
+	await wait_physics_frames(30)
+	for spot: String in ["Handguard1", "Handguard2", "Handguard3"]:
+		var point: GrabPoint = gun.frame.get_node(spot)
+		assert_true(point.enabled, spot + " is open once the gun is held")
+		var reach_from := point.global_position + Vector3(0.02, -0.03, 0.01)
+		var support := _hand(reach_from)
+		support.is_left = true
+		primary.other_hand = support
+		support.other_hand = primary
+		await wait_physics_frames(2)
+		var frame_before := gun.frame.global_position
+		support.input_grip = 1.0
+		await wait_physics_frames(2)
+		assert_eq(support.held, point, "the hand takes " + spot)
+		assert_almost_eq(support.global_position.distance_to(point.global_position), 0.0, 0.01, "palm centred on " + spot)
+		assert_almost_eq(gun.frame.global_position.distance_to(frame_before), 0.0, 0.015, "the gun doesn't jump to the hand")
+		await wait_physics_frames(45)
+		assert_almost_eq(support.global_position.distance_to(point.global_position), 0.0, 0.01, "and stays centred")
+		assert_lt(gun.frame.linear_velocity.length(), 0.1, "and nothing fights")
+		support.input_grip = 0.0
+		await wait_physics_frames(30)
+		assert_almost_eq(support.global_position.distance_to(reach_from), 0.0, 0.03, "letting go, the hand goes back to the controller")
+		support.queue_free()
+		primary.other_hand = null
+		await wait_physics_frames(1)
+
+
+func test_the_fist_closes_around_the_grip_marker() -> void:
+	# Where the fingers of each model close at the grips' closure, measured in the model.
+	var tubes := {"right": Vector3(-0.025, -0.008, -0.073), "left": Vector3(0.025, -0.008, -0.073)}
+	var axes := {"right": Vector3(0.105, 0.988, -0.111), "left": Vector3(-0.105, 0.988, -0.111)}
+	for side: String in tubes:
+		var model: Node3D = (load("res://player/hands/hand_%s.tscn" % side) as PackedScene).instantiate()
+		assert_almost_eq((model.transform * (tubes[side] as Vector3)).length(), 0.0, 0.001, side + " fist centred on the palm pose")
+		assert_gt((model.transform.basis * (axes[side] as Vector3).normalized()).dot(Vector3.FORWARD), 0.999, side + " fingers wrap around -Z")
+		model.free()
+
+
+func test_either_hand_can_take_a_support_spot() -> void:
+	var gun: Gun = AR_SCENE.instantiate()
+	add_child_autofree(gun)
+	var point: GrabPoint = gun.frame.get_node("Handguard2")
+	var left := point.palm_pose(true)
+	var right := point.palm_pose(false)
+	assert_almost_eq(left.origin.distance_to(right.origin), 0.0, 0.0001, "same place on the handguard")
+	assert_almost_eq(left.basis.x.dot(right.basis.x), -1.0, 0.001, "palm up either way, so the axes turn over")
+	assert_almost_eq(left.basis.z.dot(right.basis.z), 1.0, 0.001, "thumb forward either way")
+	var pistol: Gun = PISTOL_SCENE.instantiate()
+	add_child_autofree(pistol)
+	var spot: GrabPoint = pistol.frame.get_node("Support")
+	assert_almost_eq(spot.palm_pose(true).origin.x, -spot.palm_pose(false).origin.x, 0.0001, "the pistol spot mirrors to the other side")
+
+
+func test_two_handing_the_pistol_steadies_it_without_softening_the_wrist() -> void:
+	var one_hand := await _peak_recoil(PISTOL_SCENE, Vector3(210, 100, 0))
+	var at := Vector3(220, 100, 0)
+	var pose := Transform3D(LEVEL_GRIP * Basis(Vector3.RIGHT, deg_to_rad(18.0)), at)
+	var gun := _gun(PISTOL_SCENE, at)
+	var main := _hand(at)
+	main.set_target(pose)
+	await wait_physics_frames(2)
+	_hold(main, gun.grip)
+	await wait_physics_frames(45)
+	var spot: GrabPoint = gun.frame.get_node("Support")
+	var support := _hand(spot.global_position + Vector3(-0.03, 0, 0))
+	support.is_left = true
+	main.other_hand = support
+	support.other_hand = main
+	await wait_physics_frames(2)
+	support.input_grip = 1.0
+	await wait_physics_frames(45)
+	assert_eq(support.held, spot, "second hand takes the spot over the main hand")
+	assert_false(main._is_steered(), "a hand right by the grip doesn't take over the aim")
+	var forward := -gun.frame.global_basis.z
+	var flip := 0.0
+	main.input_trigger = 1.0
+	for i: int in 30:
+		await wait_physics_frames(1)
+		main.input_trigger = 0.0
+		flip = maxf(flip, rad_to_deg(forward.angle_to(-gun.frame.global_basis.z)))
+	assert_eq(_shots, 2, "both guns fired")
+	assert_lt(flip, one_hand["flip"] * 0.85, "two hands flip it less than one")
+	assert_gt(flip, 1.0, "but it still kicks")
 
 
 func test_hand_drops_what_it_holds_when_pulled_too_far_away() -> void:
