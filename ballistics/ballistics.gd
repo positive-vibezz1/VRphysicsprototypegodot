@@ -1,13 +1,14 @@
 class_name Ballistics
 extends Node
-## Autoload that owns the pools: bullets, casings, bullet holes and sounds. Nothing is created after startup.
+## Autoload that owns the pools: bullets, casings, bullet holes and, in a child, sounds. Nothing is created after startup.
 
 const BULLET_SCENE := "res://ballistics/bullet.tscn"
 const CASING_SCENE := "res://ballistics/casing.tscn"
 const BULLET_COUNT := 32
 const CASING_COUNT := 48
 const HOLE_COUNT := 64
-const SOUND_COUNT := 6
+## A shot stays at full volume out to here.
+const SHOT_UNIT_SIZE := 8.0
 
 signal bullet_hit(collider: Object, energy: float)
 
@@ -16,17 +17,16 @@ static var pool: Ballistics
 var _bullets: Array[Bullet] = []
 var _casings: Array[Casing] = []
 var _holes: Array[MeshInstance3D] = []
-var _sounds: Array[AudioStreamPlayer3D] = []
 var _next_bullet := 0
 var _next_casing := 0
 var _next_hole := 0
-var _next_sound := 0
 var _bang: AudioStreamWAV
 var _click: AudioStreamWAV
 
 
 func _ready() -> void:
 	pool = self
+	add_child(Sounds.new())
 	for i: int in BULLET_COUNT:
 		var bullet: Bullet = (load(BULLET_SCENE) as PackedScene).instantiate()
 		add_child(bullet)
@@ -53,11 +53,6 @@ func _ready() -> void:
 
 	_bang = _make_noise_burst(0.35, 0.03)
 	_click = _make_noise_burst(0.015, 0.003)
-	for i: int in SOUND_COUNT:
-		var sound := AudioStreamPlayer3D.new()
-		sound.unit_size = 8.0
-		add_child(sound)
-		_sounds.append(sound)
 
 
 func fire_bullet(cartridge: CartridgeSpec, from: Vector3, velocity: Vector3) -> Bullet:
@@ -78,7 +73,7 @@ func eject_casing(
 
 func on_bullet_hit(bullet: Bullet, position: Vector3, normal: Vector3, collider: Object, energy: float) -> void:
 	bullet.park()
-	play_click(position)
+	Sounds.pool.impact_on(collider, position, energy, sqrt(2.0 * maxf(energy, 0.0) / bullet.mass), bullet.mass)
 	bullet_hit.emit(collider, energy)
 	# Moving targets would leave the hole floating, so only the static world keeps them.
 	if collider is StaticBody3D and normal.length_squared() > 0.5:
@@ -92,31 +87,22 @@ func on_bullet_hit(bullet: Bullet, position: Vector3, normal: Vector3, collider:
 ## Louder with recoil and sharper with muzzle pressure: 5.56 cracks, 9 mm thumps.
 func play_shot(position: Vector3, shot: GasSim.Shot) -> void:
 	var pitch := clampf(sqrt(shot.muzzle_pressure / 6.0e7), 0.6, 1.5)
-	_play(_bang, position, clampf(shot.breech_impulse / 6.5, 0.3, 1.0), pitch)
+	Sounds.pool.play(_bang, position, clampf(shot.breech_impulse / 6.5, 0.3, 1.0), pitch, SHOT_UNIT_SIZE)
 
 
 func play_click(position: Vector3) -> void:
-	_play(_click, position, 0.4)
+	Sounds.pool.play(_click, position, 0.4)
 
 
-## Removes bullets, casings and holes left over from before a scene reload.
+## Removes bullets, casings and holes left over from before a scene reload, and lets the new scene settle quietly.
 func clear() -> void:
+	Sounds.pool.hush()
 	for bullet: Bullet in _bullets:
 		bullet.park()
 	for casing: Casing in _casings:
 		casing.park()
 	for hole: MeshInstance3D in _holes:
 		hole.visible = false
-
-
-func _play(stream: AudioStream, position: Vector3, volume: float, pitch := 1.0) -> void:
-	var sound := _sounds[_next_sound]
-	_next_sound = (_next_sound + 1) % SOUND_COUNT
-	sound.stream = stream
-	sound.global_position = position
-	sound.volume_db = linear_to_db(volume)
-	sound.pitch_scale = pitch
-	sound.play()
 
 
 ## Decaying white noise, because the project has no audio assets yet.

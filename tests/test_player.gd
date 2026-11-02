@@ -973,3 +973,81 @@ func test_controller_buttons_pick_up_and_fire() -> void:
 	_right.set_input(&"grip", 0.0)
 	await wait_physics_frames(2)
 	assert_null(hand.held, "letting go drops the gun")
+
+
+func _listen(heard: Array[float], surface: Sounds.Surface) -> Callable:
+	var listener := func(played: Sounds.Surface, _energy: float, volume: float, _pitch: float) -> void:
+		if played == surface:
+			heard.append(volume)
+	Sounds.pool.played.connect(listener)
+	return listener
+
+
+func test_steps_keep_pace_with_the_ground_covered() -> void:
+	await wait_physics_frames(50)
+	_left.set_input(&"primary", Vector2(1, 0))
+	await wait_physics_frames(90)
+	var heard: Array[float] = []
+	var listener := _listen(heard, Sounds.Surface.SOFT)
+	var start := _player.global_position.x
+	await wait_physics_frames(180)
+	Sounds.pool.played.disconnect(listener)
+	var expected := (_player.global_position.x - start) / (_player.step_length + _player.step_length_per_speed * _player.move_speed)
+	assert_almost_eq(float(heard.size()), expected, 1.0, "a step per stride")
+
+
+func test_running_steps_are_longer_and_louder_than_walking() -> void:
+	await wait_physics_frames(50)
+	_left.set_input(&"primary", Vector2(1, 0))
+	await wait_physics_frames(90)
+	var walk: Array[float] = []
+	var listener := _listen(walk, Sounds.Surface.SOFT)
+	await wait_physics_frames(120)
+	Sounds.pool.played.disconnect(listener)
+	await _click_sprint()
+	await wait_physics_frames(60)
+	var run: Array[float] = []
+	listener = _listen(run, Sounds.Surface.SOFT)
+	var start := _player.global_position.x
+	await wait_physics_frames(120)
+	Sounds.pool.played.disconnect(listener)
+	var expected := (_player.global_position.x - start) / (_player.step_length + _player.step_length_per_speed * _player.sprint_speed)
+	assert_almost_eq(float(run.size()), expected, 1.0)
+	assert_gt(run[-1], walk[-1])
+
+
+func test_standing_still_makes_no_steps() -> void:
+	await wait_physics_frames(50)
+	var heard: Array[float] = []
+	var listener := _listen(heard, Sounds.Surface.SOFT)
+	await wait_physics_frames(90)
+	Sounds.pool.played.disconnect(listener)
+	assert_eq(heard.size(), 0, str(heard))
+
+
+func test_a_longer_fall_lands_louder() -> void:
+	await wait_physics_frames(50)
+	var heights: Array[float] = [0.5, 3.0]
+	var landings: Array[float] = []
+	for height: float in heights:
+		_player.global_position = Vector3(0, height, 3)
+		_player.linear_velocity = Vector3.ZERO
+		var heard: Array[float] = []
+		var listener := _listen(heard, Sounds.Surface.SOFT)
+		await wait_physics_frames(90)
+		Sounds.pool.played.disconnect(listener)
+		assert_gt(heard.size(), 0, "a fall from %.1f m is heard" % height)
+		landings.append(heard[0] if heard.size() > 0 else 0.0)
+	assert_gt(landings[1], landings[0])
+
+
+func test_gripping_a_hold_makes_a_sound_of_what_it_is() -> void:
+	_add_block(Vector3(0.2, 1.1, 2.8), Vector3(0.4, 0.1, 0.1), true)
+	await wait_physics_frames(50)
+	var heard: Array[float] = []
+	var listener := _listen(heard, Sounds.Surface.CONCRETE)
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	Sounds.pool.played.disconnect(listener)
+	assert_true((_player.get_node("RightHand") as PhysicsHand).climbing)
+	assert_eq(heard.size(), 1, str(heard))

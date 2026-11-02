@@ -21,6 +21,10 @@ const MOST_WRIST_CHANGE := 30.0
 ## wrist in bullet time falls behind and the arm's own torque catches it up. Handing out more than the body can take
 ## would come back as a spin the wrong way when the wrist stops.
 const MOST_SPIN := 45.0
+## What closes on something when a hand grips it: the fingers. Slower than this still makes a sound, since a hold
+## taken with the hand at rest still has the fingers moving.
+const FINGERS_MASS := 0.2
+const SLOWEST_GRIP := 1.0
 
 ## Arm stiffness with an empty hand. The tick rate may cap it.
 @export var linear_stiffness := 5000.0
@@ -272,8 +276,10 @@ func _take_hold() -> bool:
 	query.shape = reach
 	query.transform = Transform3D(Basis.IDENTITY, global_position)
 	query.collision_mask = CLIMBABLE_LAYER
-	if get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty():
+	var holds := get_world_3d().direct_space_state.intersect_shape(query, 1)
+	if holds.is_empty():
 		return false
+	_grip_sound(holds[0]["collider"])
 	climbing = true
 	climb_point = target.origin
 	freeze = true
@@ -329,6 +335,7 @@ func _update_remote_target() -> void:
 
 func grab(point: GrabPoint) -> void:
 	DebugLog.event("hand", "%s grabbed %s %s from %.2f m, %.2f kg" % [_label(), point.owner.name, point.name, global_position.distance_to(point.global_position), point.owner.held_mass()])
+	_grip_sound(point.body)
 	held = point
 	point.holder = self
 	if point.mode == GrabPoint.Mode.SNAP:
@@ -419,6 +426,10 @@ func _on_touched(body: Node) -> void:
 		_pulse(clampf(speed * 0.5, 0.1, 0.6), 0.02)
 		if DebugLog.due(&"hand_touch", 0.25):
 			DebugLog.event("hand", "%s hit %s at %.1f m/s" % [_label(), body.name, speed])
+
+
+func _grip_sound(on: Object) -> void:
+	Sounds.pool.soft_hit(global_position, FINGERS_MASS, maxf(linear_velocity.length(), SLOWEST_GRIP), on)
 
 
 func _pulse(amplitude: float, duration: float, frequency := 0.0) -> void:

@@ -1,6 +1,7 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://sandbox/dummy.gd" id="1"]
+[ext_resource type="Script" path="res://audio/impact_sound.gd" id="impact_sound"]
 
 [sub_resource type="StandardMaterial3D" id="skin"]
 albedo_color = Color(0.2, 0.55, 0.75, 1)
@@ -144,3 +145,15 @@ no_depth_test = true
 pixel_size = 0.003
 font_size = 48
 outline_size = 8
+
+[node name="ImpactSound" type="Node" parent="Stand"]
+script = ExtResource("impact_sound")
+surface = 4
+
+[node name="ImpactSound" type="Node" parent="Body"]
+script = ExtResource("impact_sound")
+surface = 4
+
+[node name="ImpactSound" type="Node" parent="Head"]
+script = ExtResource("impact_sound")
+surface = 4

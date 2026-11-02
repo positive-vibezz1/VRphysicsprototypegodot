@@ -73,6 +73,7 @@ func _aim(hand: PhysicsHand, squeeze: float) -> void:
 		_peak_tension = 0.0
 		DebugLog.event("grapple", "caught %s %.1f m out" % [(get_collider() as Node).name, length])
 		hand.controller.trigger_haptic_pulse(&"haptic", 0.0, 0.8, 0.06, 0.0)
+		Ballistics.pool.play_click(from)
 	_show(hand, _line if attached else _aim_line)
 
 

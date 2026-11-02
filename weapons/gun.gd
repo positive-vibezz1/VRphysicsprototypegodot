@@ -90,7 +90,7 @@ func _ready() -> void:
 					_support_points.append(child)
 					child.enabled = false
 	frame.contact_monitor = true
-	frame.max_contacts_reported = 2
+	frame.max_contacts_reported = 4
 	frame.body_entered.connect(_on_frame_touched)
 	if start_magazine:
 		mag_well.seat(start_magazine)
@@ -119,7 +119,8 @@ func _physics_process(delta: float) -> void:
 		_report.tick(delta, self, _rail)
 	if _rail.last_stop_impulse > FELT_STOP_IMPULSE:
 		bolt_stopped.emit(_rail.last_stop_impulse)
-		Ballistics.pool.play_click(frame.global_position)
+		var stop_speed := _rail.last_stop_impulse / bolt.mass
+		Sounds.pool.impact(frame.global_position, Sounds.Surface.METAL, 0.5 * _rail.last_stop_impulse * stop_speed, stop_speed, bolt.mass)
 	if _handle_rail:
 		_handle_rail.apply(delta)
 

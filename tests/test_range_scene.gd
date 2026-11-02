@@ -203,3 +203,35 @@ func test_refresh_rate_snaps_to_a_known_value() -> void:
 	assert_eq(Player._nearest_refresh_rate(89.7), 90)
 	assert_eq(Player._nearest_refresh_rate(71.0), 72)
 	assert_eq(Player._nearest_refresh_rate(143.0), 144)
+
+
+func test_every_body_that_can_hit_something_rings_and_the_table_is_wood() -> void:
+	for found: Node in _range.find_children("*", "RigidBody3D", true, false):
+		var body: RigidBody3D = found
+		if body is Player or body.collision_mask == 0:
+			continue
+		var rings := false
+		for child: Node in body.get_children():
+			rings = rings or child is ImpactSound
+		assert_true(rings, "%s rings" % _range.get_path_to(body))
+	assert_eq((_range.get_node("Table") as Node).get_meta(&"surface"), Sounds.Surface.WOOD)
+	assert_eq((_range.get_node("Berm") as Node).get_meta(&"surface"), Sounds.Surface.SOFT)
+	assert_eq((_range.get_node("Crate1") as Node).get_meta(&"surface"), Sounds.Surface.WOOD)
+	assert_eq((_range.get_node("Can1") as Node).get_meta(&"surface"), Sounds.Surface.METAL)
+	assert_eq((_range.get_node("Pistol/Frame") as Node).get_meta(&"surface"), Sounds.Surface.METAL)
+	assert_eq((_range.get_node("Parkour/Rung1") as Node).get_meta(&"surface"), Sounds.Surface.METAL)
+	assert_false((_range.get_node("Floor") as Node).has_meta(&"surface"), "concrete is the default")
+
+
+func test_a_gun_dropped_on_the_table_rings_both() -> void:
+	var pistol: Gun = _range.get_node("Pistol")
+	await wait_physics_frames(50)
+	var surfaces: Array[Sounds.Surface] = []
+	var listener := func(surface: Sounds.Surface, _energy: float, _volume: float, _pitch: float) -> void:
+		surfaces.append(surface)
+	Sounds.pool.played.connect(listener)
+	pistol.teleport(Transform3D(Basis.IDENTITY, Vector3(0, 0.4, 0)))
+	await wait_physics_frames(45)
+	Sounds.pool.played.disconnect(listener)
+	assert_has(surfaces, Sounds.Surface.METAL)
+	assert_has(surfaces, Sounds.Surface.WOOD)

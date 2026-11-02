@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SurfaceSound" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://audio/surface_sound.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+modes = PackedVector3Array(170, 45, 1, 340, 60, 0.9, 610, 80, 0.6, 1050, 110, 0.35, 1800, 160, 0.2)
+reference_mass = 4.0
+level = 0.9
+soft_contact = 0.0012
+hard_contact = 0.0003
+noise_level = 0.3
+noise_decay = 0.003

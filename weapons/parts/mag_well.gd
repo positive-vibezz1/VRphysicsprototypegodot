@@ -51,6 +51,7 @@ func tick() -> void:
 		_latch_armed = true
 	if depth <= seat_tolerance and _latch_armed:
 		_latch()
+		Ballistics.pool.play_click(global_position)
 	elif depth >= engage_length:
 		_remove()
 
@@ -59,6 +60,7 @@ func release() -> void:
 	if magazine == null or not latched:
 		return
 	latched = false
+	Ballistics.pool.play_click(global_position)
 	DebugLog.event("gun", "%s magazine released, %d rounds" % [owner.name, magazine.count])
 	_latch_armed = false
 	_set_limits(0.0, engage_length + 0.002)

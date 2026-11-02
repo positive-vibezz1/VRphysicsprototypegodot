@@ -490,3 +490,18 @@ func test_hand_drops_what_it_holds_when_pulled_too_far_away() -> void:
 	await wait_physics_frames(3)
 	assert_null(hand.held)
 	assert_almost_eq(hand.global_position.x, at.x + 5.0, 0.2, "hand jumped to the controller")
+
+
+func test_grabbing_makes_a_sound_of_the_glove_and_what_it_closed_on() -> void:
+	var at := Vector3(84, 100, 0)
+	var gun := _gun(PISTOL_SCENE, at)
+	var hand := _hand(at)
+	await wait_physics_frames(50)
+	var surfaces: Array[Sounds.Surface] = []
+	var listener := func(surface: Sounds.Surface, _energy: float, _volume: float, _pitch: float) -> void:
+		surfaces.append(surface)
+	Sounds.pool.played.connect(listener)
+	_hold(hand, gun.grip)
+	Sounds.pool.played.disconnect(listener)
+	assert_has(surfaces, Sounds.Surface.SOFT)
+	assert_has(surfaces, Sounds.Surface.METAL)

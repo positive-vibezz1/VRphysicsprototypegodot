@@ -90,6 +90,14 @@ const MANTLE_TIME_LIMIT := 2.0
 @export var arm_swing_jump := 0.5
 ## The most a swing can add. 5.2 m/s lifts the feet about 1.4 m.
 @export var max_arm_swing_jump := 2.0
+## A step's length, 0.9 m at a stroll's 1.4 m/s to 2 m at a run's 6.5 m/s, about what people do.
+@export var step_length := 0.6
+@export var step_length_per_speed := 0.22
+## What comes down with each step and how fast: a foot and shin, at about a third of the body's speed.
+@export var foot_mass := 1.0
+@export var foot_speed_share := 0.35
+## What comes down in a landing, at the speed of the fall. The bending legs take the rest of the body out of it.
+@export var landing_mass := 4.0
 ## Shoulder position relative to the head, for bracing a stock.
 @export var shoulder_offset := Vector3(0.17, -0.2, 0.06)
 
@@ -106,6 +114,8 @@ var _height := 0.0
 ## How fast the body is coming up off the ground under it.
 var _rising := 0.0
 var _air_time := 0.0
+## How far the body has come over the ground since the last step.
+var _stride := 0.0
 var _fall_speed := 0.0
 var _floor_normal := Vector3.UP
 var _floor_velocity := Vector3.ZERO
@@ -179,6 +189,7 @@ func _physics_process(delta: float) -> void:
 			set_tick_rate(_nearest_refresh_rate(Engine.get_frames_per_second()))
 	_update_fit(tick)
 	_feel_ground(delta)
+	_step(delta)
 	_turn(tick)
 	_follow_head()
 	_update_hand(_left_hand, _left_controller, _left_aim, delta)
@@ -242,10 +253,27 @@ func _feel_ground(delta: float) -> void:
 			var thump := minf(_fall_speed / 8.0, 1.0)
 			_left_controller.trigger_haptic_pulse(&"haptic", 0.0, thump, 0.06, 0.0)
 			_right_controller.trigger_haptic_pulse(&"haptic", 0.0, thump, 0.06, 0.0)
+			_foot_down(landing_mass, _fall_speed)
+			_stride = 0.0
 		_air_time = 0.0
 	else:
 		_air_time += delta
 	_fall_speed = -linear_velocity.y
+
+
+## Steps go by distance over the ground, so they keep pace with the body whatever is moving it.
+func _step(delta: float) -> void:
+	if not _grounded or _mantling:
+		return
+	var speed := (linear_velocity - _floor_velocity).slide(_floor_normal).length()
+	_stride += speed * delta
+	if _stride >= step_length + step_length_per_speed * speed:
+		_stride = 0.0
+		_foot_down(foot_mass, speed * foot_speed_share)
+
+
+func _foot_down(foot: float, speed: float) -> void:
+	Sounds.pool.soft_hit(_floor_point, foot, speed, _feet.get_collider())
 
 
 ## Legs come back out only once there's room for them under the torso, or they would appear inside a ledge.
@@ -363,6 +391,7 @@ func _jump(delta: float) -> void:
 		_take_off_time = ARM_SWING_WINDOW
 		_swing_used = 0.0
 		_push_off(jump_speed)
+		_foot_down(foot_mass, jump_speed * foot_speed_share)
 	_was_jump = jump
 	if _take_off_time > 0.0:
 		_take_off_time -= delta

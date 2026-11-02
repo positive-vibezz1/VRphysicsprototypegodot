@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://weapons/gun.gd" id="1"]
 [ext_resource type="Resource" path="res://weapons/parts/cartridge_9x19.tres" id="2"]
@@ -13,6 +13,7 @@
 [ext_resource type="ArrayMesh" path="res://weapons/pistol/models/spring.res" id="spring_model"]
 [ext_resource type="Script" path="res://weapons/parts/spring_visual.gd" id="spring_script"]
 [ext_resource type="Script" path="res://weapons/parts/ammo_counter.gd" id="counter_script"]
+[ext_resource type="Script" path="res://audio/impact_sound.gd" id="impact_sound"]
 
 [sub_resource type="BoxShape3D" id="dust_cover_shape"]
 size = Vector3(0.026, 0.02, 0.195)
@@ -160,3 +161,9 @@ trigger_visual = NodePath("../Frame/TriggerPivot")
 
 [node name="Magazine" parent="." instance=ExtResource("6")]
 transform = Transform3D(1, 0, 0, 0, 0.951057, 0.309017, 0, -0.309017, 0.951057, 0, 0.012, 0.0027)
+
+[node name="ImpactSound" type="Node" parent="Frame"]
+script = ExtResource("impact_sound")
+
+[node name="ImpactSound" type="Node" parent="Bolt"]
+script = ExtResource("impact_sound")

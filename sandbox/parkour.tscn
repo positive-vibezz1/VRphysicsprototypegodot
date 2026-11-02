@@ -1,8 +1,9 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://sandbox/parkour_block.gd" id="1"]
 [ext_resource type="Shader" path="res://sandbox/world_grid.gdshader" id="2"]
 [ext_resource type="Script" path="res://sandbox/parkour_pipe.gd" id="3"]
+[ext_resource type="Script" path="res://audio/impact_sound.gd" id="impact_sound"]
 
 [sub_resource type="ShaderMaterial" id="hop"]
 shader = ExtResource("2")
@@ -547,3 +548,11 @@ pixel_size = 0.004
 text = "GRAPPLE\nPoint an empty hand at a block until the dot shows, and squeeze to connect.\nHold on to swing, and pull your arm back to haul yourself in."
 font_size = 48
 outline_size = 12
+
+[node name="ImpactSound" type="Node" parent="PushCube1"]
+script = ExtResource("impact_sound")
+surface = 3
+
+[node name="ImpactSound" type="Node" parent="PushCube2"]
+script = ExtResource("impact_sound")
+surface = 3

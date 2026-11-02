@@ -1,4 +1,6 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://audio/impact_sound.gd" id="impact_sound"]
 
 [sub_resource type="StandardMaterial3D" id="steel"]
 albedo_color = Color(0.75, 0.3, 0.15, 1)
@@ -66,3 +68,6 @@ surface_material_override/0 = SubResource("steel")
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 1.28, 0)
 node_a = NodePath("../Frame")
 node_b = NodePath("../Plate")
+
+[node name="ImpactSound" type="Node" parent="Plate"]
+script = ExtResource("impact_sound")

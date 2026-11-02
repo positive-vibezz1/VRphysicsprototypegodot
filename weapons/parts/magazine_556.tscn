@@ -1,10 +1,11 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://weapons/parts/magazine.gd" id="1"]
 [ext_resource type="Resource" path="res://weapons/parts/cartridge_556x45.tres" id="2"]
 [ext_resource type="Script" path="res://player/grab_point.gd" id="3"]
 [ext_resource type="ArrayMesh" path="res://weapons/ar/models/magazine.res" id="magazine_model"]
 [ext_resource type="ArrayMesh" path="res://weapons/ar/models/round.res" id="round_model"]
+[ext_resource type="Script" path="res://audio/impact_sound.gd" id="impact_sound"]
 
 [sub_resource type="BoxShape3D" id="shape"]
 size = Vector3(0.024, 0.18, 0.062)
@@ -33,3 +34,6 @@ mesh = ExtResource("round_model")
 [node name="GrabPoint" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, -0.1, 0)
 script = ExtResource("3")
+
+[node name="ImpactSound" type="Node" parent="."]
+script = ExtResource("impact_sound")

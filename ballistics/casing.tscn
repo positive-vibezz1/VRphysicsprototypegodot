@@ -1,6 +1,7 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://ballistics/casing.gd" id="1"]
+[ext_resource type="Script" path="res://audio/impact_sound.gd" id="impact_sound"]
 
 [sub_resource type="PhysicsMaterial" id="physics"]
 bounce = 0.45
@@ -39,3 +40,7 @@ shape = SubResource("shape")
 cast_shadow = 0
 mesh = SubResource("mesh")
 surface_material_override/0 = SubResource("brass")
+
+[node name="ImpactSound" type="Node" parent="."]
+script = ExtResource("impact_sound")
+surface = 2

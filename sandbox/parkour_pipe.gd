@@ -23,6 +23,7 @@ func _ready() -> void:
 	# World, climbable and grapple target. Nothing pushes a static body, so it needs no mask.
 	collision_layer = 3073
 	collision_mask = 0
+	set_meta(&"surface", Sounds.Surface.METAL)
 	_mesh.radial_segments = 12
 	_mesh.rings = 1
 	_refresh()

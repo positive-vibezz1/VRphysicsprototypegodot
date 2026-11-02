@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3]
+[gd_scene load_steps=28 format=3]
 
 [ext_resource type="Script" path="res://weapons/gun.gd" id="1"]
 [ext_resource type="Resource" path="res://weapons/parts/cartridge_556x45.tres" id="2"]
@@ -15,6 +15,7 @@
 [ext_resource type="ArrayMesh" path="res://weapons/ar/models/spring.res" id="spring_model"]
 [ext_resource type="Script" path="res://weapons/parts/spring_visual.gd" id="spring_script"]
 [ext_resource type="Script" path="res://weapons/parts/ammo_counter.gd" id="counter_script"]
+[ext_resource type="Script" path="res://audio/impact_sound.gd" id="impact_sound"]
 
 [sub_resource type="Resource" id="gas_port"]
 script = ExtResource("7")
@@ -262,3 +263,6 @@ pin_mass = 0.006
 
 [node name="Magazine" parent="." instance=ExtResource("6")]
 transform = Transform3D(1, 0, 0, 0, 0.990268, -0.139173, 0, 0.139173, 0.990268, 0, 0.02, -0.115)
+
+[node name="ImpactSound" type="Node" parent="Frame"]
+script = ExtResource("impact_sound")
