@@ -99,19 +99,48 @@ func test_two_hands_can_swap_a_magazine() -> void:
 	assert_eq(left.held, spare.grab_point, "picked up the spare")
 	var well := pistol.mag_well
 	var below := well.global_position - well.global_basis.y * 0.25
-	var offset := spare.global_position - spare.grab_point.global_position
-	var hold_upright := well.global_basis * Basis(Vector3.RIGHT, PI * 0.5)
-	await _move(left, Transform3D(hold_upright, below - offset), 60)
+	var palm_on_mag := spare.grab_point.palm_pose()
+	await _move(left, Transform3D(well.global_basis, below) * palm_on_mag, 60)
 	await wait_physics_frames(20)
 
 	# Push it up the well, far enough to seat it through the hand's lag.
 	for i: int in 45:
 		var depth := 0.25 - 0.3 * (float(i) / 45.0)
-		left.set_target(Transform3D(hold_upright, well.global_position - well.global_basis.y * depth - offset))
+		var seated := Transform3D(well.global_basis, well.global_position - well.global_basis.y * depth)
+		left.set_target(seated * palm_on_mag)
 		await wait_physics_frames(1)
 	assert_eq(well.magazine, spare, "spare went in")
 	assert_true(well.latched, "and latched")
 	assert_null(left.held, "the hand lets go once it clicks in")
+	await wait_physics_frames(10)
+	assert_almost_eq(well._depth_of(spare), 0.0, 0.003, "and it pulls fully home")
+
+
+func test_seating_the_pistol_magazine_keeps_the_real_hands_apart() -> void:
+	var pistol: Gun = _range.get_node("Pistol")
+	var spare: Magazine = _range.get_node("SpareMag9mm")
+	var seated_palm: Vector3 = pistol.mag_well.global_transform * spare.grab_point.palm_pose().origin
+	# Controllers are about 15 cm long, and they would otherwise be holding the same few centimeters of grip.
+	assert_gt(seated_palm.distance_to(pistol.grip.global_position), 0.17)
+
+
+func test_hands_show_a_model_with_fingers_that_follow_the_inputs() -> void:
+	var right: PhysicsHand = _range.get_node("Player/RightHand")
+	var left: PhysicsHand = _range.get_node("Player/LeftHand")
+	assert_not_null(right.find_child("mesh_Hand_low_R", true, false), "right hand model")
+	assert_not_null(left.find_child("mesh_Hand_low_L", true, false), "left hand model")
+	var pose := Transform3D(LEVEL_GRIP, Vector3(0, 1.4, 0.5))
+	right.set_target(pose)
+	await wait_physics_frames(2)
+	var tree: AnimationTree = right.find_child("AnimationTree", true, false)
+	assert_almost_eq(tree.get("parameters/Grip/blend_amount"), 0.0, 0.01, "open hand")
+	right.input_grip = 1.0
+	right.input_trigger = 0.5
+	await wait_physics_frames(2)
+	assert_almost_eq(tree.get("parameters/Grip/blend_amount"), 1.0, 0.01, "fist")
+	assert_almost_eq(tree.get("parameters/Trigger/blend_amount"), 0.5, 0.01, "trigger finger")
+	var skeleton: Skeleton3D = right.find_child("Skeleton3D", true, false)
+	assert_gt(skeleton.get_bone_count(), 20, "the animation has bones to move")
 
 
 func _capacity(gun: Gun) -> int:
@@ -124,6 +153,13 @@ func _move(hand: PhysicsHand, to: Transform3D, ticks := 40) -> void:
 	for i: int in ticks:
 		hand.set_target(from.interpolate_with(to, float(i + 1) / ticks))
 		await wait_physics_frames(1)
+
+
+func test_tick_rate_changes_when_asked() -> void:
+	var before := Engine.physics_ticks_per_second
+	(_range.get_node("Player") as Player).set_tick_rate(72)
+	assert_eq(Engine.physics_ticks_per_second, 72)
+	Engine.physics_ticks_per_second = before
 
 
 func test_refresh_rate_snaps_to_a_known_value() -> void:

@@ -3,6 +3,8 @@ extends CharacterBody3D
 ## XR rig. The capsule follows the head, the sticks move and turn smoothly, the hands chase the controllers.
 
 const KNOWN_REFRESH_RATES: Array[int] = [72, 80, 90, 120, 144]
+## How often to re-measure the refresh rate on a runtime that doesn't report it.
+const RATE_CHECK_INTERVAL := 3.0
 
 ## A brisk walk, and a run with the left stick clicked in.
 @export var move_speed := 4.0
@@ -19,6 +21,8 @@ var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _fall_speed := 0.0
 var _was_menu := false
 var _was_jump := false
+var _measure_rate := false
+var _rate_check_time := 0.0
 
 @onready var _origin: XROrigin3D = $XROrigin3D
 @onready var _camera: XRCamera3D = $XROrigin3D/XRCamera3D
@@ -41,6 +45,11 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _measure_rate:
+		_rate_check_time += delta
+		if _rate_check_time >= RATE_CHECK_INTERVAL:
+			_rate_check_time = 0.0
+			set_tick_rate(_nearest_refresh_rate(Engine.get_frames_per_second()))
 	_locomote(delta)
 	_update_hand(_left_hand, _left_controller, _left_aim)
 	_update_hand(_right_hand, _right_controller, _right_aim)
@@ -123,12 +132,18 @@ func _start_xr() -> void:
 
 func _on_session_begun() -> void:
 	var rate := roundi(_xr.display_refresh_rate)
-	if rate <= 0:
-		# SteamVR does not report a refresh rate. Measure it once the compositor has settled.
-		await get_tree().create_timer(3.0).timeout
-		rate = _nearest_refresh_rate(Engine.get_frames_per_second())
-	Engine.physics_ticks_per_second = rate
-	print("Physics tick rate set to ", rate, " Hz")
+	if rate > 0:
+		set_tick_rate(rate)
+	else:
+		# SteamVR does not report a refresh rate, so measure it. Keep measuring: the first few seconds run slow
+		# while everything loads, and a tick rate out of step with the display makes all movement judder.
+		_measure_rate = true
+
+
+func set_tick_rate(rate: int) -> void:
+	if rate != Engine.physics_ticks_per_second:
+		Engine.physics_ticks_per_second = rate
+		print("Physics tick rate set to ", rate, " Hz")
 
 
 static func _nearest_refresh_rate(measured: float) -> int:

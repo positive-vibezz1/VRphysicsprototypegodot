@@ -27,7 +27,7 @@ Git Bash: `GODOT="/d/godot/Godot_v4.7.2-stable_win64_console.exe"`. PowerShell: 
 
 Always pass `--xr-mode off` to headless runs: without it Godot starts SteamVR and hangs.
 
-The test command runs physics at 10 times real speed. About 1 run in 25 fails on a "Jolt Physics job system exceeded" warning, seen only at that speed so far: run it again.
+The test command runs physics at 10 times real speed. About 1 run in 20 fails on a "Jolt Physics job system exceeded" warning, seen only at that speed so far: run it again.
 
 Claude can't see or feel anything in the headset. After any change that affects feel or handling, list exactly what ruby should check in VR.
 

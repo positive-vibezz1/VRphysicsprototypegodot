@@ -50,3 +50,4 @@ surface_material_override/0 = SubResource("brass")
 [node name="GrabPoint" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, -0.06, 0)
 script = ExtResource("3")
+palm_offset = Vector3(0, 0, 0.16)

@@ -6,10 +6,11 @@ extends Area3D
 @export var cartridge: CartridgeSpec
 ## How far below the seated pose the magazine starts or stops being on the rails.
 @export var engage_length := 0.09
-@export var seat_tolerance := 0.004
+## A magazine pushed this close snaps home, like the last bit of a real one clicking in.
+@export var seat_tolerance := 0.015
 ## Maximum lateral miss and alignment (dot of the axes) that still go in.
 @export var capture_radius := 0.04
-@export var capture_alignment := 0.85
+@export var capture_alignment := 0.8
 ## Latch release speed from the magazine's spring pressure.
 @export var eject_speed := 0.3
 
@@ -105,8 +106,7 @@ func _make_joint(mag: Magazine) -> void:
 
 func _latch() -> void:
 	latched = true
-	var depth := _depth_of(magazine)
-	_set_limits(depth, depth)
+	_set_limits(0.0, 0.0)
 	magazine.grab_point.enabled = false
 	if magazine.grab_point.holder:
 		magazine.grab_point.holder.release()

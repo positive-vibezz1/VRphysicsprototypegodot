@@ -11,6 +11,9 @@ enum Mode { SNAP, PIN }
 ## Half length of the grabbable segment along the local Z axis, for long parts like a handguard.
 @export var half_length := 0.0
 @export var enabled := true
+## Where the palm ends up relative to this point, along its local axes. A hand can hold a part well away from
+## itself, so two real controllers don't collide when the part has to go somewhere close to the other hand.
+@export var palm_offset := Vector3.ZERO
 
 ## Every grab point in the scene, so hands can search them each tick without allocating.
 static var all: Array[GrabPoint] = []
@@ -50,6 +53,11 @@ func carried_inertia(palm: Vector3) -> Vector3:
 	return total
 
 
-## Teleports the owning gun or magazine so that this point lands on the given transform.
+## The palm's pose when holding this point, relative to the held body.
+func palm_pose() -> Transform3D:
+	return transform.translated_local(palm_offset)
+
+
+## Teleports the owning gun or magazine so that the palm pose lands on the given transform.
 func snap_to(target: Transform3D) -> void:
-	owner.teleport(target * global_transform.affine_inverse())
+	owner.teleport(target * global_transform.translated_local(palm_offset).affine_inverse())
