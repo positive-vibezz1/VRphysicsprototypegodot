@@ -33,24 +33,14 @@ func _initialize() -> void:
 
 	var stage := Node3D.new()
 	root.add_child(stage)
-	var environment := WorldEnvironment.new()
-	environment.environment = Environment.new()
-	environment.environment.background_mode = Environment.BG_COLOR
-	environment.environment.background_color = Color(0.55, 0.57, 0.6)
-	environment.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.environment.ambient_light_color = Color(0.7, 0.72, 0.78)
-	environment.environment.ambient_light_energy = 0.9
-	environment.environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	stage.add_child(environment)
-	var key := DirectionalLight3D.new()
-	key.rotation_degrees = Vector3(-42.0, 35.0, 0.0)
-	key.light_energy = 2.2
-	key.shadow_enabled = true
-	stage.add_child(key)
-	var fill := DirectionalLight3D.new()
-	fill.rotation_degrees = Vector3(-20.0, -140.0, 0.0)
-	fill.light_energy = 0.6
-	stage.add_child(fill)
+	# The range's own sky and sun, so metal and paint look as they do in the game.
+	var range_scene: Node = (load("res://sandbox/range.tscn") as PackedScene).instantiate()
+	for light_name: String in ["WorldEnvironment", "Sun"]:
+		var node := range_scene.get_node(light_name)
+		range_scene.remove_child(node)
+		node.owner = null
+		stage.add_child(node)
+	range_scene.free()
 	var camera := Camera3D.new()
 	camera.fov = 35.0
 	camera.near = 0.01

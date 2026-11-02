@@ -1,4 +1,4 @@
-[gd_scene load_steps=52 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://weapons/gun.gd" id="1"]
 [ext_resource type="Resource" path="res://weapons/parts/cartridge_9x19.tres" id="2"]
@@ -6,13 +6,13 @@
 [ext_resource type="Script" path="res://weapons/parts/mag_well.gd" id="4"]
 [ext_resource type="Script" path="res://player/grab_point.gd" id="5"]
 [ext_resource type="PackedScene" path="res://weapons/parts/magazine_9mm.tscn" id="6"]
-[ext_resource type="Script" path="res://weapons/parts/profile_mesh.gd" id="7"]
-[ext_resource type="Material" path="res://weapons/parts/materials/polymer.tres" id="8"]
-[ext_resource type="Material" path="res://weapons/parts/materials/polymer_dark.tres" id="9"]
-[ext_resource type="Material" path="res://weapons/parts/materials/rubber.tres" id="10"]
-[ext_resource type="Material" path="res://weapons/parts/materials/steel.tres" id="11"]
-[ext_resource type="Material" path="res://weapons/parts/materials/steel_worn.tres" id="12"]
-[ext_resource type="Material" path="res://weapons/parts/materials/sight_dot.tres" id="13"]
+[ext_resource type="ArrayMesh" path="res://weapons/pistol/models/frame.res" id="frame_model"]
+[ext_resource type="ArrayMesh" path="res://weapons/pistol/models/slide.res" id="slide_model"]
+[ext_resource type="ArrayMesh" path="res://weapons/pistol/models/trigger.res" id="trigger_model"]
+[ext_resource type="ArrayMesh" path="res://weapons/pistol/models/hammer.res" id="hammer_model"]
+[ext_resource type="ArrayMesh" path="res://weapons/pistol/models/spring.res" id="spring_model"]
+[ext_resource type="Script" path="res://weapons/parts/spring_visual.gd" id="spring_script"]
+[ext_resource type="Script" path="res://weapons/parts/ammo_counter.gd" id="counter_script"]
 
 [sub_resource type="BoxShape3D" id="dust_cover_shape"]
 size = Vector3(0.026, 0.02, 0.195)
@@ -34,198 +34,6 @@ rings = 4
 shading_mode = 0
 albedo_color = Color(1, 0.75, 0.3, 1)
 
-[sub_resource type="PrimitiveMesh" id="dust_cover"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.122, 0.0092, -0.056, 0.0092, -0.056, 0.0293, -0.1225, 0.0293, -0.125, 0.0265, -0.125, 0.012)
-width = 0.026
-material = ExtResource("8")
-
-[sub_resource type="PrimitiveMesh" id="frame_rear"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.06, 0.009, 0.03, 0.009, 0.062, 0.011, 0.062, 0.0295, -0.06, 0.0295)
-width = 0.0296
-material = ExtResource("8")
-
-[sub_resource type="PrimitiveMesh" id="accessory_rail"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.1178, 0.0097, -0.1178, 0.003, -0.113, 0.003, -0.113, 0.0062, -0.1078, 0.0062, -0.1078, 0.003, -0.103, 0.003, -0.103, 0.0062, -0.0978, 0.0062, -0.0978, 0.003, -0.093, 0.003, -0.093, 0.0062, -0.0878, 0.0062, -0.0878, 0.003, -0.083, 0.003, -0.083, 0.0097)
-width = 0.021
-material = ExtResource("8")
-
-[sub_resource type="PrimitiveMesh" id="trigger_guard"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.0695, 0.012, -0.0695, -0.0155, -0.066, -0.0195, -0.006, -0.0195, -0.006, -0.0235, -0.0715, -0.0235, -0.0775, -0.0185, -0.0775, -0.012, -0.0755, 0.012)
-width = 0.012
-material = ExtResource("8")
-
-[sub_resource type="PrimitiveMesh" id="beavertail"]
-script = ExtResource("7")
-points = PackedVector2Array(0.0615, 0.011, 0.0895, 0.011, 0.091, 0.0135, 0.0915, 0.019, 0.0895, 0.0245, 0.082, 0.028, 0.0615, 0.0293)
-width = 0.0101
-material = ExtResource("8")
-
-[sub_resource type="BoxMesh" id="beavertail_floor"]
-material = ExtResource("8")
-size = Vector3(0.0092, 0.0018, 0.028)
-
-[sub_resource type="PrimitiveMesh" id="grip_body"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.025, 0.0607, -0.025, 0.04, -0.0225, 0.033, -0.0225, 0.026, -0.025, 0.019, -0.025, -0.046, -0.022, -0.05, 0.02, -0.05, 0.025, -0.046, 0.0262, -0.025, 0.0265, 0, 0.0262, 0.02, 0.025, 0.035, 0.025, 0.0445)
-width = 0.0294
-material = ExtResource("8")
-
-[sub_resource type="BoxMesh" id="grip_panels"]
-material = ExtResource("9")
-size = Vector3(0.0302, 0.072, 0.034)
-
-[sub_resource type="PrimitiveMesh" id="backstrap"]
-script = ExtResource("7")
-points = PackedVector2Array(0.0237, -0.044, 0.0255, -0.044, 0.0269, -0.025, 0.0272, 0, 0.0269, 0.02, 0.0257, 0.035, 0.0237, 0.035)
-width = 0.018
-material = ExtResource("9")
-
-[sub_resource type="CylinderMesh" id="mag_release"]
-material = ExtResource("12")
-top_radius = 0.0045
-bottom_radius = 0.0045
-height = 0.0036
-radial_segments = 10
-rings = 0
-
-[sub_resource type="PrimitiveMesh" id="slide_stop"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.04, 0.0235, -0.004, 0.0235, 0.004, 0.0255, 0.006, 0.0315, -0.004, 0.0315, -0.006, 0.0275, -0.04, 0.0275)
-width = 0.0025
-material = ExtResource("12")
-
-[sub_resource type="PrimitiveMesh" id="takedown_lever"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.06, 0.0225, -0.048744, 0.022497, -0.046519, 0.024236, -0.043696, 0.024307, -0.041386, 0.022681, -0.0405, 0.02, -0.041386, 0.017319, -0.043696, 0.015693, -0.046519, 0.015764, -0.048744, 0.017503, -0.06, 0.0175)
-width = 0.0025
-material = ExtResource("12")
-
-[sub_resource type="CylinderMesh" id="pin_3mm"]
-material = ExtResource("12")
-top_radius = 0.003
-bottom_radius = 0.003
-height = 0.0306
-radial_segments = 8
-rings = 0
-
-[sub_resource type="CylinderMesh" id="pin_2_5mm"]
-material = ExtResource("12")
-top_radius = 0.0025
-bottom_radius = 0.0025
-height = 0.0306
-radial_segments = 8
-rings = 0
-
-[sub_resource type="CylinderMesh" id="pin_2mm"]
-material = ExtResource("12")
-top_radius = 0.002
-bottom_radius = 0.002
-height = 0.0306
-radial_segments = 8
-rings = 0
-
-[sub_resource type="CylinderMesh" id="barrel"]
-material = ExtResource("11")
-top_radius = 0.0063
-bottom_radius = 0.0063
-height = 0.114
-radial_segments = 14
-rings = 0
-
-[sub_resource type="CylinderMesh" id="chamber"]
-material = ExtResource("11")
-top_radius = 0.0078
-bottom_radius = 0.0078
-height = 0.0345
-radial_segments = 14
-rings = 0
-
-[sub_resource type="CylinderMesh" id="bore"]
-material = ExtResource("9")
-top_radius = 0.0045
-bottom_radius = 0.0045
-height = 0.0008
-radial_segments = 10
-rings = 0
-
-[sub_resource type="PrimitiveMesh" id="trigger"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.0025, 0.004, 0.003, 0.004, 0.0035, -0.004, 0.003, -0.01, 0.001, -0.016, -0.002, -0.0205, -0.0045, -0.0225, -0.0065, -0.0215, -0.006, -0.0185, -0.0045, -0.013, -0.0035, -0.007, -0.0035, -0.001)
-width = 0.007
-material = ExtResource("12")
-
-[sub_resource type="PrimitiveMesh" id="hammer"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.0045, -0.004, 0.004, -0.004, 0.0045, 0.009, 0.0085, 0.013, 0.0125, 0.0165, 0.013, 0.0195, 0.0105, 0.0215, 0.006, 0.0215, 0.001, 0.0205, -0.003, 0.0175, -0.0045, 0.0125)
-width = 0.008
-material = ExtResource("12")
-
-[sub_resource type="PrimitiveMesh" id="slide_rear"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.014, -0.015, 0.014, -0.015, 0.014, 0.0095, 0.0085, 0.015, -0.0085, 0.015, -0.014, 0.0095)
-width = 0.077
-material = ExtResource("11")
-
-[sub_resource type="PrimitiveMesh" id="slide_port"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.014, -0.015, 0.014, -0.015, 0.014, -0.004, -0.003, -0.004, -0.003, 0.015, -0.0085, 0.015, -0.014, 0.0095)
-width = 0.034
-material = ExtResource("11")
-
-[sub_resource type="PrimitiveMesh" id="slide_front"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.014, -0.012, -0.011, -0.015, 0.011, -0.015, 0.014, -0.012, 0.014, 0.0095, 0.0085, 0.015, -0.0085, 0.015, -0.014, 0.0095)
-width = 0.069
-material = ExtResource("11")
-
-[sub_resource type="PrimitiveMesh" id="slide_nose"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.014, -0.009, -0.008, -0.015, 0.008, -0.015, 0.014, -0.009, 0.014, 0.007, 0.006, 0.015, -0.006, 0.015, -0.014, 0.007)
-width = 0.01
-material = ExtResource("11")
-
-[sub_resource type="BoxMesh" id="port_floor"]
-material = ExtResource("9")
-size = Vector3(0.0163, 0.001, 0.035)
-
-[sub_resource type="BoxMesh" id="breech_face"]
-material = ExtResource("12")
-size = Vector3(0.0173, 0.0185, 0.0015)
-
-[sub_resource type="BoxMesh" id="extractor"]
-material = ExtResource("12")
-size = Vector3(0.0012, 0.0035, 0.018)
-
-[sub_resource type="BoxMesh" id="serration_rear"]
-material = ExtResource("9")
-size = Vector3(0.0012, 0.018, 0.0016)
-
-[sub_resource type="BoxMesh" id="serration_front"]
-material = ExtResource("9")
-size = Vector3(0.0012, 0.016, 0.0016)
-
-[sub_resource type="BoxMesh" id="front_sight"]
-material = ExtResource("11")
-size = Vector3(0.003, 0.004, 0.005)
-
-[sub_resource type="PrimitiveMesh" id="rear_sight"]
-script = ExtResource("7")
-points = PackedVector2Array(-0.0085, -0.0005, 0.0085, -0.0005, 0.0085, 0.0055, 0.0016, 0.0055, 0.0016, 0.0025, -0.0016, 0.0025, -0.0016, 0.0055, -0.0085, 0.0055)
-width = 0.007
-material = ExtResource("11")
-
-[sub_resource type="CylinderMesh" id="sight_dot"]
-material = ExtResource("13")
-top_radius = 0.0009
-bottom_radius = 0.0009
-height = 0.0008
-radial_segments = 8
-rings = 0
-
 [node name="Pistol" type="Node3D" node_paths=PackedStringArray("start_magazine")]
 script = ExtResource("1")
 cartridge = ExtResource("2")
@@ -246,6 +54,15 @@ mass = 0.29
 center_of_mass_mode = 1
 center_of_mass = Vector3(0, 0, -0.015)
 
+[node name="Model" type="MeshInstance3D" parent="Frame"]
+mesh = ExtResource("frame_model")
+
+[node name="RecoilSpring" type="MeshInstance3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0193, -0.03)
+mesh = ExtResource("spring_model")
+script = ExtResource("spring_script")
+length = 0.088
+
 [node name="DustCoverShape" type="CollisionShape3D" parent="Frame"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.019, -0.0275)
 shape = SubResource("dust_cover_shape")
@@ -253,82 +70,6 @@ shape = SubResource("dust_cover_shape")
 [node name="GripShape" type="CollisionShape3D" parent="Frame"]
 transform = Transform3D(1, 0, 0, 0, 0.951057, 0.309017, 0, -0.309017, 0.951057, 0, -0.035, 0.018)
 shape = SubResource("grip_shape")
-
-[node name="DustCover" type="MeshInstance3D" parent="Frame"]
-mesh = SubResource("dust_cover")
-
-[node name="FrameRear" type="MeshInstance3D" parent="Frame"]
-mesh = SubResource("frame_rear")
-
-[node name="AccessoryRail" type="MeshInstance3D" parent="Frame"]
-mesh = SubResource("accessory_rail")
-
-[node name="TriggerGuard" type="MeshInstance3D" parent="Frame"]
-mesh = SubResource("trigger_guard")
-
-[node name="BeavertailR" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00955, 0, 0)
-mesh = SubResource("beavertail")
-
-[node name="BeavertailL" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00955, 0, 0)
-mesh = SubResource("beavertail")
-
-[node name="BeavertailFloor" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0121, 0.0755)
-mesh = SubResource("beavertail_floor")
-
-[node name="GripBody" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 0.951057, 0.309017, 0, -0.309017, 0.951057, 0, -0.035, 0.018)
-mesh = SubResource("grip_body")
-
-[node name="GripPanels" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 0.951057, 0.309017, 0, -0.309017, 0.951057, 0, -0.04262, 0.022053)
-mesh = SubResource("grip_panels")
-
-[node name="Backstrap" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 0.951057, 0.309017, 0, -0.309017, 0.951057, 0, -0.035, 0.018)
-mesh = SubResource("backstrap")
-
-[node name="MagRelease" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -0.0155, -0.00699, -0.005821)
-mesh = SubResource("mag_release")
-
-[node name="SlideStop" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01565, 0, 0)
-mesh = SubResource("slide_stop")
-
-[node name="TakedownLever" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.01565, 0, 0)
-mesh = SubResource("takedown_lever")
-
-[node name="TakedownPin" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0.02, -0.045)
-mesh = SubResource("pin_3mm")
-
-[node name="SlideStopPin" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0.0255, -0.025)
-mesh = SubResource("pin_2_5mm")
-
-[node name="TriggerPin" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0.0125, -0.036)
-mesh = SubResource("pin_2mm")
-
-[node name="HammerPin" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0.022, 0.07)
-mesh = SubResource("pin_2_5mm")
-
-[node name="Barrel" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.045, -0.071)
-mesh = SubResource("barrel")
-
-[node name="Chamber" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.045, -0.03075)
-mesh = SubResource("chamber")
-
-[node name="Bore" type="MeshInstance3D" parent="Frame"]
-transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.045, -0.1282)
-mesh = SubResource("bore")
 
 [node name="Grip" type="Marker3D" parent="Frame"]
 transform = Transform3D(1, 0, 0, 0, 0.309017, -0.951057, 0, 0.951057, 0.309017, 0, -0.035, 0.018)
@@ -367,13 +108,13 @@ shape = SubResource("well_shape")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008, -0.042)
 
 [node name="Trigger" type="MeshInstance3D" parent="Frame/TriggerPivot"]
-mesh = SubResource("trigger")
+mesh = ExtResource("trigger_model")
 
 [node name="HammerPivot" type="Node3D" parent="Frame"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.022, 0.07)
 
 [node name="Hammer" type="MeshInstance3D" parent="Frame/HammerPivot"]
-mesh = SubResource("hammer")
+mesh = ExtResource("hammer_model")
 
 [node name="Bolt" type="RigidBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.045, -0.03)
@@ -382,136 +123,21 @@ collision_mask = 1
 mass = 0.29
 center_of_mass_mode = 1
 
+[node name="Model" type="MeshInstance3D" parent="Bolt"]
+mesh = ExtResource("slide_model")
+
+[node name="AmmoCounter" type="Label3D" parent="Bolt"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0072, 0.0963)
+pixel_size = 0.00013
+double_sided = false
+modulate = Color(0.3, 1, 0.95, 1)
+text = "0"
+font_size = 64
+outline_size = 0
+script = ExtResource("counter_script")
+
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Bolt"]
 shape = SubResource("slide_shape")
-
-[node name="SlideRear" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0, 0.0565)
-mesh = SubResource("slide_rear")
-
-[node name="SlidePort" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0, 0.001)
-mesh = SubResource("slide_port")
-
-[node name="SlideFront" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0, -0.0505)
-mesh = SubResource("slide_front")
-
-[node name="SlideNose" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0, -0.09)
-mesh = SubResource("slide_nose")
-
-[node name="PortFloor" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00565, -0.0033, 0.001)
-mesh = SubResource("port_floor")
-
-[node name="BreechFace" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00515, 0.00575, 0.01775)
-mesh = SubResource("breech_face")
-
-[node name="Extractor" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0141, 0.003, 0.028)
-mesh = SubResource("extractor")
-
-[node name="RearSerrationR1" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0137, 0, 0.07)
-mesh = SubResource("serration_rear")
-
-[node name="RearSerrationL1" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0137, 0, 0.07)
-mesh = SubResource("serration_rear")
-
-[node name="RearSerrationR2" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0137, 0, 0.0735)
-mesh = SubResource("serration_rear")
-
-[node name="RearSerrationL2" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0137, 0, 0.0735)
-mesh = SubResource("serration_rear")
-
-[node name="RearSerrationR3" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0137, 0, 0.077)
-mesh = SubResource("serration_rear")
-
-[node name="RearSerrationL3" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0137, 0, 0.077)
-mesh = SubResource("serration_rear")
-
-[node name="RearSerrationR4" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0137, 0, 0.0805)
-mesh = SubResource("serration_rear")
-
-[node name="RearSerrationL4" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0137, 0, 0.0805)
-mesh = SubResource("serration_rear")
-
-[node name="RearSerrationR5" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0137, 0, 0.084)
-mesh = SubResource("serration_rear")
-
-[node name="RearSerrationL5" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0137, 0, 0.084)
-mesh = SubResource("serration_rear")
-
-[node name="RearSerrationR6" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0137, 0, 0.0875)
-mesh = SubResource("serration_rear")
-
-[node name="RearSerrationL6" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0137, 0, 0.0875)
-mesh = SubResource("serration_rear")
-
-[node name="FrontSerrationR1" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0137, 0.001, -0.07)
-mesh = SubResource("serration_front")
-
-[node name="FrontSerrationL1" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0137, 0.001, -0.07)
-mesh = SubResource("serration_front")
-
-[node name="FrontSerrationR2" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0137, 0.001, -0.0735)
-mesh = SubResource("serration_front")
-
-[node name="FrontSerrationL2" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0137, 0.001, -0.0735)
-mesh = SubResource("serration_front")
-
-[node name="FrontSerrationR3" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0137, 0.001, -0.077)
-mesh = SubResource("serration_front")
-
-[node name="FrontSerrationL3" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0137, 0.001, -0.077)
-mesh = SubResource("serration_front")
-
-[node name="FrontSerrationR4" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0137, 0.001, -0.0805)
-mesh = SubResource("serration_front")
-
-[node name="FrontSerrationL4" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0137, 0.001, -0.0805)
-mesh = SubResource("serration_front")
-
-[node name="FrontSight" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0165, -0.08)
-mesh = SubResource("front_sight")
-
-[node name="FrontDot" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.017, -0.0772)
-mesh = SubResource("sight_dot")
-
-[node name="RearSight" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0.015, 0.0885)
-mesh = SubResource("rear_sight")
-
-[node name="RearDotL" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, -0.0045, 0.0185, 0.0923)
-mesh = SubResource("sight_dot")
-
-[node name="RearDotR" type="MeshInstance3D" parent="Bolt"]
-transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0.0045, 0.0185, 0.0923)
-mesh = SubResource("sight_dot")
 
 [node name="EjectionPort" type="Marker3D" parent="Bolt"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.018, 0.008, 0.015)
