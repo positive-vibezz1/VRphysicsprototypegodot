@@ -9,6 +9,8 @@ const CASING_COUNT := 48
 const HOLE_COUNT := 64
 const SOUND_COUNT := 6
 
+signal bullet_hit(collider: Object, energy: float)
+
 static var pool: Ballistics
 
 var _bullets: Array[Bullet] = []
@@ -74,9 +76,10 @@ func eject_casing(
 	return casing
 
 
-func on_bullet_hit(bullet: Bullet, position: Vector3, normal: Vector3, collider: Object) -> void:
+func on_bullet_hit(bullet: Bullet, position: Vector3, normal: Vector3, collider: Object, energy: float) -> void:
 	bullet.park()
 	play_click(position)
+	bullet_hit.emit(collider, energy)
 	# Moving targets would leave the hole floating, so only the static world keeps them.
 	if collider is StaticBody3D and normal.length_squared() > 0.5:
 		var hole := _holes[_next_hole]

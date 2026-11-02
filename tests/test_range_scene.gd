@@ -54,6 +54,20 @@ func test_parkour_course_has_holds_on_it_and_is_clear_of_the_firing_lanes() -> v
 	assert_gt(steep.angle_to(Vector3.UP), player.floor_max_angle, "the steep one can't")
 
 
+func test_dummy_in_the_range_is_clear_of_the_steel_and_takes_a_bullet() -> void:
+	var dummy: Dummy = _range.get_node("Dummy")
+	await wait_physics_frames(30)
+	# On the floor plan, from the middle of the table.
+	for steel: String in ["Steel5m", "Steel10m", "Steel25m", "Steel50m"]:
+		var lane := (_range.get_node(steel) as Node3D).global_position.normalized()
+		var to_dummy := dummy.global_position
+		assert_gt((to_dummy - lane * to_dummy.dot(lane)).length(), 0.4, steel + " can be seen past the dummy")
+	var chest := dummy.global_position + Vector3(0, 1.0, 0)
+	Ballistics.pool.fire_bullet(load("res://weapons/parts/cartridge_9x19.tres") as CartridgeSpec, chest + Vector3(0, 0, 3), Vector3(0, 0, -370))
+	await wait_physics_frames(6)
+	assert_lt(dummy.health, dummy.max_health, "hurt")
+
+
 func test_pick_up_the_pistol_and_hit_a_steel_plate() -> void:
 	var pistol: Gun = _range.get_node("Pistol")
 	var hand: PhysicsHand = _range.get_node("Player/RightHand")

@@ -75,6 +75,18 @@ func test_bullet_gives_its_momentum_to_a_loose_target() -> void:
 	assert_lt(target.linear_velocity.z, 0.0, "pushed away from the shooter")
 
 
+func test_bullet_reports_the_energy_the_contact_took_out_of_it() -> void:
+	var wall := _wall(Vector3(0, 65, -5), 0.1)
+	watch_signals(Ballistics.pool)
+	Ballistics.pool.fire_bullet(NINE, Vector3(0, 65, 0), Vector3(0, 0, -360))
+	await wait_physics_frames(6)
+	var hit: Array = get_signal_parameters(Ballistics.pool, "bullet_hit")
+	assert_eq(hit[0], wall)
+	# Drag takes a little over 5 m, and the rest goes into the wall.
+	var energy := 0.5 * NINE.bullet_mass * 360.0 * 360.0
+	assert_between(hit[1] as float, energy * 0.95, energy)
+
+
 func test_casing_pool_gives_real_mass_and_keeps_going_round() -> void:
 	var first := Ballistics.pool.eject_casing(NINE, Vector3(0, 80, 0), Basis.IDENTITY, Vector3(1, 0, 0), Vector3.ZERO, false)
 	assert_almost_eq(first.mass, NINE.casing_mass, 1.0e-6)
