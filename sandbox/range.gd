@@ -23,6 +23,7 @@ Menu: reset. Hold Y with an empty left hand: adjust where your hands sit."""
 
 
 func _ready() -> void:
+	DebugLog.save_console()
 	Ballistics.pool.clear()
 	for gun: Gun in [$Pistol as Gun, $AR as Gun]:
 		gun.shot_fired.connect(_on_shot_fired.bind(gun))

@@ -38,6 +38,30 @@ func test_nothing_is_due_when_it_is_off() -> void:
 	assert_false(DebugLog.due(&"test_off", 0.0))
 
 
+func test_the_console_file_gets_what_the_console_shows_right_away() -> void:
+	var path := "user://test_console_file.log"
+	var logger := ConsoleFile.new(path, "from before
+")
+	OS.add_logger(logger)
+	print("a line for the file")
+	push_warning("a warning for the file")
+	# Read back while it's still open: a killed game never gets to close it.
+	var saved := FileAccess.get_file_as_string(path)
+	OS.remove_logger(logger)
+	DirAccess.remove_absolute(path)
+	assert_string_starts_with(saved, "from before
+")
+	assert_string_contains(saved, "a line for the file
+")
+	assert_string_contains(saved, "WARNING: a warning for the file")
+
+
+func test_only_a_game_run_saves_its_console() -> void:
+	DebugLog.save_console()
+	assert_false(DebugLog.is_game_run(), "this is a headless run")
+	assert_null(DebugLog._console_file)
+
+
 func test_every_event_can_build_its_line() -> void:
 	DebugLog.enabled = true
 	var shots := [0]

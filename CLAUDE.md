@@ -31,7 +31,7 @@ Always pass `--xr-mode off` to headless runs: without it Godot starts SteamVR an
 
 The test command runs physics at 10 times real speed. About 1 run in 20 fails on a "Jolt Physics job system exceeded" warning, seen only at that speed so far: run it again.
 
-The game prints tuning numbers to the console and to `user://logs/godot.log`, one line per event (`DebugLog`): shots, recoil, hits, grabs, movement state. F9 in the game window flips it, `-- --no-log` starts it off, and it's off in headless runs. Check `DebugLog.enabled` or `due` before building a line in per-tick code.
+The game prints tuning numbers to the console, one line per event (`DebugLog`): shots, recoil, hits, grabs, movement state. F9 in the game window flips it, `-- --no-log` starts it off, and it's off in headless runs. Each game run saves its whole console to `logs/session_<date>_<time>.log` as it goes, so read those for how a headset session went. Godot's own `user://logs` keeps only 5 and test runs push them out. Check `DebugLog.enabled` or `due` before building a line in per-tick code.
 
 Claude can't see or feel anything in the headset. After any change that affects feel or handling, list exactly what ruby should check in VR.
 
