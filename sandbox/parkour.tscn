@@ -1,7 +1,8 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://sandbox/parkour_block.gd" id="1"]
 [ext_resource type="Shader" path="res://sandbox/world_grid.gdshader" id="2"]
+[ext_resource type="Script" path="res://sandbox/parkour_pipe.gd" id="3"]
 
 [sub_resource type="ShaderMaterial" id="hop"]
 shader = ExtResource("2")
@@ -15,17 +16,22 @@ shader_parameter/color = Color(0.8, 0.5, 0.2, 1)
 shader = ExtResource("2")
 shader_parameter/color = Color(0.62, 0.58, 0.5, 1)
 
-[sub_resource type="ShaderMaterial" id="hold"]
-shader = ExtResource("2")
-shader_parameter/color = Color(0.85, 0.25, 0.2, 1)
-
 [sub_resource type="ShaderMaterial" id="grapple"]
 shader = ExtResource("2")
 shader_parameter/color = Color(0.45, 0.35, 0.65, 1)
 
-[sub_resource type="StandardMaterial3D" id="wood"]
-albedo_color = Color(0.47, 0.34, 0.22, 1)
-roughness = 0.9
+[sub_resource type="StandardMaterial3D" id="pipe"]
+albedo_color = Color(0.85, 0.22, 0.14, 1)
+metallic = 0.3
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="rock"]
+albedo_color = Color(0.64, 0.59, 0.52, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="crevice"]
+albedo_color = Color(0.05, 0.04, 0.04, 1)
+roughness = 1.0
 
 [sub_resource type="PhysicsMaterial" id="wood_on_ground"]
 friction = 0.5
@@ -35,6 +41,10 @@ size = Vector3(0.7, 0.7, 0.7)
 
 [sub_resource type="BoxMesh" id="cube_mesh"]
 size = Vector3(0.7, 0.7, 0.7)
+
+[sub_resource type="StandardMaterial3D" id="wood"]
+albedo_color = Color(0.47, 0.34, 0.22, 1)
+roughness = 0.9
 
 [node name="Parkour" type="Node3D"]
 
@@ -128,53 +138,105 @@ script = ExtResource("1")
 size = Vector3(3, 1.3, 0.6)
 material = SubResource("climb")
 
+[node name="LowWallLip" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.33, 7.72)
+script = ExtResource("1")
+size = Vector3(3, 0.06, 0.1)
+material = SubResource("pipe")
+climbable = true
+
 [node name="HighWall" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.1, 11)
 script = ExtResource("1")
 size = Vector3(3, 2.2, 1.2)
 material = SubResource("climb")
 
-[node name="TallWall" type="StaticBody3D" parent="."]
+[node name="HighWallLip" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 2.23, 10.42)
+script = ExtResource("1")
+size = Vector3(3, 0.06, 0.1)
+material = SubResource("pipe")
+climbable = true
+
+[node name="Cliff" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 2.5, 15.5)
 script = ExtResource("1")
 size = Vector3(4, 5, 1)
-material = SubResource("climb")
+material = SubResource("rock")
 
-[node name="Hold1" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.6, 1.2, 14.96)
+[node name="Crag1" type="StaticBody3D" parent="."]
+transform = Transform3D(0.984808, 0, 0.173648, 0, 1, 0, -0.173648, 0, 0.984808, 3.6, 0.8, 14.85)
 script = ExtResource("1")
-size = Vector3(0.5, 0.06, 0.08)
-material = SubResource("hold")
+size = Vector3(1.5, 1.6, 0.6)
+material = SubResource("rock")
 
-[node name="Hold2" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.4, 1.8, 14.96)
+[node name="Crag2" type="StaticBody3D" parent="."]
+transform = Transform3D(0.968628, -0.136132, -0.207912, 0.139173, 0.990268, 0, 0.205888, -0.028936, 0.978148, 6.3, 2.6, 14.85)
 script = ExtResource("1")
-size = Vector3(0.5, 0.06, 0.08)
-material = SubResource("hold")
+size = Vector3(1.3, 1.1, 0.5)
+material = SubResource("rock")
 
-[node name="Hold3" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.6, 2.4, 14.96)
+[node name="Crag3" type="StaticBody3D" parent="."]
+transform = Transform3D(0.988769, 0.086506, 0.121869, -0.087156, 0.996195, 0, -0.121406, -0.010622, 0.992546, 4.3, 3.9, 14.85)
 script = ExtResource("1")
-size = Vector3(0.5, 0.06, 0.08)
-material = SubResource("hold")
+size = Vector3(1.8, 0.9, 0.5)
+material = SubResource("rock")
 
-[node name="Hold4" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.4, 3, 14.96)
+[node name="Crevice1" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.3, 1, 14.99)
 script = ExtResource("1")
-size = Vector3(0.5, 0.06, 0.08)
-material = SubResource("hold")
+size = Vector3(0.5, 0.05, 0.03)
+material = SubResource("crevice")
+climbable = true
 
-[node name="Hold5" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.6, 3.6, 14.96)
+[node name="Crevice2" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.7, 1.7, 14.99)
 script = ExtResource("1")
-size = Vector3(0.5, 0.06, 0.08)
-material = SubResource("hold")
+size = Vector3(0.5, 0.05, 0.03)
+material = SubResource("crevice")
+climbable = true
 
-[node name="Hold6" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.4, 4.2, 14.96)
+[node name="Crevice3" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.9, 2.3, 14.99)
 script = ExtResource("1")
-size = Vector3(0.5, 0.06, 0.08)
-material = SubResource("hold")
+size = Vector3(0.5, 0.05, 0.03)
+material = SubResource("crevice")
+climbable = true
+
+[node name="Crevice4" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.3, 2.9, 14.99)
+script = ExtResource("1")
+size = Vector3(0.5, 0.05, 0.03)
+material = SubResource("crevice")
+climbable = true
+
+[node name="Crevice5" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, 3.3, 14.99)
+script = ExtResource("1")
+size = Vector3(0.5, 0.05, 0.03)
+material = SubResource("crevice")
+climbable = true
+
+[node name="Crevice6" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.8, 3.9, 14.99)
+script = ExtResource("1")
+size = Vector3(0.5, 0.05, 0.03)
+material = SubResource("crevice")
+climbable = true
+
+[node name="Crevice7" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.7, 4.5, 14.99)
+script = ExtResource("1")
+size = Vector3(0.5, 0.05, 0.03)
+material = SubResource("crevice")
+climbable = true
+
+[node name="CliffTop" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 4.98, 14.98)
+script = ExtResource("1")
+size = Vector3(4, 0.05, 0.06)
+material = SubResource("crevice")
+climbable = true
 
 [node name="TowerA" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1.5, 8)
@@ -188,143 +250,19 @@ script = ExtResource("1")
 size = Vector3(2, 3, 2)
 material = SubResource("climb")
 
-[node name="LadderRailL" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.72, 1.5, 6.9)
+[node name="TowerALip" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3.03, 7.05)
 script = ExtResource("1")
-size = Vector3(0.05, 3, 0.05)
-material = SubResource("hold")
+size = Vector3(2, 0.06, 0.1)
+material = SubResource("pipe")
+climbable = true
 
-[node name="LadderRailR" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.28, 1.5, 6.9)
+[node name="TowerBLip" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3.03, 15.05)
 script = ExtResource("1")
-size = Vector3(0.05, 3, 0.05)
-material = SubResource("hold")
-
-[node name="Rung1" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0.35, 6.9)
-script = ExtResource("1")
-size = Vector3(0.56, 0.04, 0.04)
-material = SubResource("hold")
-
-[node name="Rung2" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0.7, 6.9)
-script = ExtResource("1")
-size = Vector3(0.56, 0.04, 0.04)
-material = SubResource("hold")
-
-[node name="Rung3" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1.05, 6.9)
-script = ExtResource("1")
-size = Vector3(0.56, 0.04, 0.04)
-material = SubResource("hold")
-
-[node name="Rung4" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1.4, 6.9)
-script = ExtResource("1")
-size = Vector3(0.56, 0.04, 0.04)
-material = SubResource("hold")
-
-[node name="Rung5" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1.75, 6.9)
-script = ExtResource("1")
-size = Vector3(0.56, 0.04, 0.04)
-material = SubResource("hold")
-
-[node name="Rung6" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 2.1, 6.9)
-script = ExtResource("1")
-size = Vector3(0.56, 0.04, 0.04)
-material = SubResource("hold")
-
-[node name="Rung7" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 2.45, 6.9)
-script = ExtResource("1")
-size = Vector3(0.56, 0.04, 0.04)
-material = SubResource("hold")
-
-[node name="Rung8" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 2.8, 6.9)
-script = ExtResource("1")
-size = Vector3(0.56, 0.04, 0.04)
-material = SubResource("hold")
-
-[node name="BarRailL" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.5, 3, 12)
-script = ExtResource("1")
-size = Vector3(0.05, 0.05, 6)
-material = SubResource("hold")
-
-[node name="BarRailR" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 3, 12)
-script = ExtResource("1")
-size = Vector3(0.05, 0.05, 6)
-material = SubResource("hold")
-
-[node name="Bar1" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3, 9.5)
-script = ExtResource("1")
-size = Vector3(1, 0.05, 0.05)
-material = SubResource("hold")
-
-[node name="Bar2" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3, 10)
-script = ExtResource("1")
-size = Vector3(1, 0.05, 0.05)
-material = SubResource("hold")
-
-[node name="Bar3" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3, 10.5)
-script = ExtResource("1")
-size = Vector3(1, 0.05, 0.05)
-material = SubResource("hold")
-
-[node name="Bar4" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3, 11)
-script = ExtResource("1")
-size = Vector3(1, 0.05, 0.05)
-material = SubResource("hold")
-
-[node name="Bar5" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3, 11.5)
-script = ExtResource("1")
-size = Vector3(1, 0.05, 0.05)
-material = SubResource("hold")
-
-[node name="Bar6" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3, 12)
-script = ExtResource("1")
-size = Vector3(1, 0.05, 0.05)
-material = SubResource("hold")
-
-[node name="Bar7" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3, 12.5)
-script = ExtResource("1")
-size = Vector3(1, 0.05, 0.05)
-material = SubResource("hold")
-
-[node name="Bar8" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3, 13)
-script = ExtResource("1")
-size = Vector3(1, 0.05, 0.05)
-material = SubResource("hold")
-
-[node name="Bar9" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3, 13.5)
-script = ExtResource("1")
-size = Vector3(1, 0.05, 0.05)
-material = SubResource("hold")
-
-[node name="Bar10" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3, 14)
-script = ExtResource("1")
-size = Vector3(1, 0.05, 0.05)
-material = SubResource("hold")
-
-[node name="Bar11" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3, 14.5)
-script = ExtResource("1")
-size = Vector3(1, 0.05, 0.05)
-material = SubResource("hold")
+size = Vector3(2, 0.06, 0.1)
+material = SubResource("pipe")
+climbable = true
 
 [node name="TowerL" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 2.5, 30)
@@ -368,6 +306,188 @@ script = ExtResource("1")
 size = Vector3(2.5, 0.4, 2.5)
 material = SubResource("grapple")
 
+[node name="SteepRail" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.819232, -0.573462, 0, 0.573462, 0.819232, 1, 1.568815, 7.951692)
+script = ExtResource("3")
+length = 3.661967
+radius = 0.03
+material = SubResource("pipe")
+
+[node name="Drainpipe" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.9, 1.1, 10.33)
+script = ExtResource("3")
+length = 2.2
+radius = 0.04
+material = SubResource("pipe")
+
+[node name="OverheadPipe" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 5, 3.5, 13.3)
+script = ExtResource("3")
+length = 3.4
+radius = 0.04
+material = SubResource("pipe")
+
+[node name="LadderRailL" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.72, 1.5, 6.9)
+script = ExtResource("3")
+length = 3
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="LadderRailR" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.28, 1.5, 6.9)
+script = ExtResource("3")
+length = 3
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="Rung1" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 0.35, 6.9)
+script = ExtResource("3")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+
+[node name="Rung2" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 0.7, 6.9)
+script = ExtResource("3")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+
+[node name="Rung3" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 1.05, 6.9)
+script = ExtResource("3")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+
+[node name="Rung4" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 1.4, 6.9)
+script = ExtResource("3")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+
+[node name="Rung5" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 1.75, 6.9)
+script = ExtResource("3")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+
+[node name="Rung6" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 2.1, 6.9)
+script = ExtResource("3")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+
+[node name="Rung7" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 2.45, 6.9)
+script = ExtResource("3")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+
+[node name="Rung8" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 2.8, 6.9)
+script = ExtResource("3")
+length = 0.56
+radius = 0.02
+material = SubResource("pipe")
+
+[node name="BarRailL" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 9.5, 3, 12)
+script = ExtResource("3")
+length = 6
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="BarRailR" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 10.5, 3, 12)
+script = ExtResource("3")
+length = 6
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="Bar1" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 3, 9.5)
+script = ExtResource("3")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="Bar2" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 3, 10)
+script = ExtResource("3")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="Bar3" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 3, 10.5)
+script = ExtResource("3")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="Bar4" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 3, 11)
+script = ExtResource("3")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="Bar5" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 3, 11.5)
+script = ExtResource("3")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="Bar6" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 3, 12)
+script = ExtResource("3")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="Bar7" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 3, 12.5)
+script = ExtResource("3")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="Bar8" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 3, 13)
+script = ExtResource("3")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="Bar9" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 3, 13.5)
+script = ExtResource("3")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="Bar10" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 3, 14)
+script = ExtResource("3")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+
+[node name="Bar11" type="StaticBody3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 10, 3, 14.5)
+script = ExtResource("3")
+length = 1
+radius = 0.025
+material = SubResource("pipe")
+
 [node name="PushCube1" type="RigidBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.35, 6.2)
 collision_layer = 512
@@ -397,10 +517,10 @@ mesh = SubResource("cube_mesh")
 surface_material_override/0 = SubResource("wood")
 
 [node name="HopLabel" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 2.6, 6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 2.8, 6)
 billboard = 1
 pixel_size = 0.004
-text = "JUMP\nRight stick click or flick up. Run for the gaps."
+text = "JUMP\nRight stick click or flick up. Swing your arms up to jump higher.\nRun for the gaps."
 font_size = 48
 outline_size = 12
 
@@ -408,15 +528,15 @@ outline_size = 12
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 2.6, 6)
 billboard = 1
 pixel_size = 0.004
-text = "RAMPS\nThe steepest one is too steep: climb it, or slide back down."
+text = "RAMPS\nThe steepest one is too steep to stand on: haul up the rail, or slide back down."
 font_size = 48
 outline_size = 12
 
 [node name="ClimbLabel" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 2.6, 6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 2.8, 6)
 billboard = 1
 pixel_size = 0.004
-text = "CLIMB\nGrip any block and pull yourself up. Let go mid-pull to launch."
+text = "CLIMB\nGrip ladders, pipes, red ledges and rock crevices.\nPull down to go up. Let go mid-pull to launch."
 font_size = 48
 outline_size = 12
 

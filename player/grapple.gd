@@ -1,7 +1,7 @@
 class_name Grapple
 extends RayCast3D
-## A cable shot from an empty hand at the climbable surface it points at. It can only pull: the body swings on it
-## under its own weight and momentum, a harder squeeze winds it in, and letting go keeps whatever speed the body has.
+## A cable shot from an empty hand at the parkour surface it points at. It can only pull: the body swings on it under
+## its own weight and momentum, a harder squeeze winds it in, and letting go keeps whatever speed the body has.
 
 ## Trigger squeeze: past AIM shows where it would hit, past FIRE shoots and starts winding in, and anywhere above
 ## HOLD keeps hold of it without winding, for swinging.

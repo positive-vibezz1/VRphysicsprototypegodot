@@ -5,13 +5,13 @@ extends Node3D
 const FRAME_PROFILE := "/interaction_profiles/valve/frame_controller_valve"
 const COMMON_CONTROLS := """Grip: grab. Point at a gun or mag up to 1.5 m away, then grip, to pull it to you.
 Trigger: fire. Free hand on the slide or charging handle: rack.
-Grip a parkour block: climb. Trigger on an empty hand: grapple.
+Grip a ladder, pipe, red ledge or crevice: climb. Trigger on an empty hand: grapple.
 """
 const FRAME_CONTROLS := COMMON_CONTROLS + """A or D-pad down: drop mag. B or D-pad right: fire mode. X or D-pad left: bolt release.
-Left stick: move, L3 or L1 to run. Right stick: turn, R3 or R1 or flick up to jump.
+Left stick: move, L3 or L1 toggles run. Right stick: turn, R3 or R1 or flick up to jump.
 Menu: reset. Hold View with an empty left hand: adjust where your hands sit."""
 const TOUCH_CONTROLS := COMMON_CONTROLS + """A or X: drop mag. B or Y: fire mode, or bolt release when locked back.
-Left stick: move, click to run. Right stick: turn, click or flick up to jump.
+Left stick: move, click toggles run. Right stick: turn, click or flick up to jump.
 Menu: reset. Hold Y with an empty left hand: adjust where your hands sit."""
 
 @onready var _readout: Label3D = $Table/Readout

@@ -21,8 +21,22 @@ const FIT_TILT_SPEED := 30.0
 const JUMP_GRACE := 0.1
 ## How far above standing height the legs still reach the ground.
 const GROUND_REACH := 0.1
+## A body rising faster than this over the ground has left it, however close it still is: legs don't straighten this
+## fast, so it jumped or got launched, and the feet have no more say in where it goes.
+const LEFT_THE_GROUND := 2.0
 ## A landing below this speed isn't worth a thump.
 const SOFT_LANDING := 1.5
+## The legs brake when the stick asks for less than this share of the body's speed. It's about cos(45 degrees), so a
+## gentle turn keeps its momentum and a hard one sheds it.
+const BRAKE_BELOW := 0.7
+## Hands rising slower than this are just reaching for something, not swinging.
+const SLOWEST_ARM_SWING := 1.0
+## Hands "rising" faster than this are the tracking jumping, not an arm.
+const FASTEST_ARM_SWING := 10.0
+## How quickly a swing is forgotten: one at a normal 3 m/s still counts for 0.3 s, so it can come before the button.
+const ARM_SWING_DECAY := 10.0
+## How long after the button a swing still adds to the jump, so it can come after the button too.
+const ARM_SWING_WINDOW := 0.15
 
 ## A brisk walk, and a run with the left stick clicked in.
 @export var move_speed := 4.0
@@ -31,9 +45,12 @@ const SOFT_LANDING := 1.5
 ## How fast the turn rate changes. Quick, because easing a turn in and out is what makes people sick.
 @export var turn_acceleration := 14.0
 @export var stick_deadzone := 0.15
-## Most the legs can push along the ground: 7 m/s2 on 80 kg, about a hard sprint start or stop. Speeding up, stopping
-## and changing direction all come from this.
+## Most the legs can push along the ground: 7 m/s2 on 80 kg, about a hard sprint start. Speeding up and steering come
+## from this.
 @export var leg_force := 560.0
+## Most the legs can brake with: 15 m/s2 on 80 kg, which stops a walk in about 50 cm and a run in about 1.4 m. Planted
+## feet stop a body much harder than they can start it.
+@export var brake_force := 1200.0
 ## Most the legs can push up: 5 times body weight, about what a hard landing takes.
 @export var leg_lift := 4000.0
 ## How fast the legs take up a difference from standing height, in rad/s. A critically damped spring: a jump's landing
@@ -51,6 +68,11 @@ const SOFT_LANDING := 1.5
 @export var arm_response := 20.0
 ## Take-off speed: 3.2 m/s lifts the feet about 50 cm, a good standing jump.
 @export var jump_speed := 3.2
+## Take-off speed added per m/s of the hands swinging up. A real arm swing adds about 20% to a jump, but nothing pushes
+## back on the real body here, so this is well past that to make it read: a hard 4 m/s swing nearly doubles the height.
+@export var arm_swing_jump := 0.5
+## The most a swing can add. 5.2 m/s lifts the feet about 1.4 m.
+@export var max_arm_swing_jump := 2.0
 ## Shoulder position relative to the head, for bracing a stock.
 @export var shoulder_offset := Vector3(0.17, -0.2, 0.06)
 
@@ -64,6 +86,8 @@ var _turn_rate := 0.0
 var _grounded := false
 ## Of the body above where it stands on the ground under it.
 var _height := 0.0
+## How fast the body is coming up off the ground under it.
+var _rising := 0.0
 var _air_time := 0.0
 var _fall_speed := 0.0
 var _floor_normal := Vector3.UP
@@ -75,6 +99,13 @@ var _legs_bottom := 0.0
 var _torso_bottom := 0.0
 var _sweep := PhysicsTestMotionParameters3D.new()
 var _sweep_result := PhysicsTestMotionResult3D.new()
+var _sprinting := false
+var _was_sprint := false
+var _was_moving := false
+var _hands_height := 0.0
+var _arm_swing := 0.0
+var _take_off_time := 0.0
+var _swing_used := 0.0
 var _was_menu := false
 var _was_jump := false
 var _measure_rate := false
@@ -138,7 +169,8 @@ func _physics_process(delta: float) -> void:
 		_hang(_right_hand, hands_on)
 	else:
 		_walk(delta)
-	_jump()
+	_measure_arm_swing(delta)
+	_jump(delta)
 
 	var forward := -_camera.global_basis.z
 	var yaw := Basis(Vector3.UP, atan2(-forward.x, -forward.z))
@@ -161,10 +193,14 @@ func _feel_ground(delta: float) -> void:
 	_grounded = _feet.is_colliding() and _feet.get_collision_normal().y > cos(floor_max_angle)
 	_floor_body = null
 	if _grounded:
-		_floor_point = _feet.get_collision_point()
 		_floor_normal = _feet.get_collision_normal()
+		var under := _feet.get_collider() as RigidBody3D
+		_floor_velocity = under.linear_velocity if under else Vector3.ZERO
+		_rising = (linear_velocity - _floor_velocity).dot(_floor_normal) / _floor_normal.y
+		_grounded = _rising < LEFT_THE_GROUND
+	if _grounded:
+		_floor_point = _feet.get_collision_point()
 		_floor_body = _feet.get_collider() as RigidBody3D
-		_floor_velocity = _floor_body.linear_velocity if _floor_body else Vector3.ZERO
 		_height = global_position.y - _floor_point.y
 		# Nothing pushes back on the real body, so a hard landing has to come through the controllers.
 		if _air_time > 0.0 and _fall_speed > SOFT_LANDING:
@@ -190,10 +226,9 @@ func _tuck_legs(tucked: bool) -> void:
 func _stand(hands_on: int) -> void:
 	if not _grounded:
 		return
-	var rising := (linear_velocity - _floor_velocity).dot(_floor_normal) / _floor_normal.y
 	var goal := minf(-_height * stand_response * 0.5, stand_up_speed)
 	var weight := _gravity if hands_on == 0 else 0.0
-	var force := Vector3.UP * clampf(mass * (weight + 2.0 * stand_response * (goal - rising)), 0.0, leg_lift)
+	var force := Vector3.UP * clampf(mass * (weight + 2.0 * stand_response * (goal - _rising)), 0.0, leg_lift)
 	apply_central_force(force)
 	if _floor_body:
 		_floor_body.apply_force(-force, _floor_point - _floor_body.global_position)
@@ -250,31 +285,64 @@ func _walk(delta: float) -> void:
 	forward.y = 0.0
 	forward = forward.normalized()
 	var wish := Vector3(-forward.z, 0.0, forward.x) * stick.x + forward * stick.y
-	var speed := sprint_speed if _left_controller.is_button_pressed(&"sprint") else move_speed
+	# Clicking toggles the run, and it ends with the walk. It can be clicked before setting off, with the stick centered.
+	var moving := stick != Vector2.ZERO
+	var sprint := _left_controller.is_button_pressed(&"sprint")
+	if sprint and not _was_sprint:
+		_sprinting = not _sprinting
+	elif _was_moving and not moving:
+		_sprinting = false
+	_was_sprint = sprint
+	_was_moving = moving
+	var speed := sprint_speed if _sprinting else move_speed
 	if not _grounded:
 		# Only ever adds speed up to the stick's: steering doesn't brake a body that's flying faster than that.
 		if wish != Vector3.ZERO and linear_velocity.dot(wish.normalized()) < speed:
 			apply_central_force(wish * air_force)
 		return
 	var goal := wish.slide(_floor_normal).normalized() * wish.length() * speed
-	var error := _floor_velocity + goal - linear_velocity
+	var relative := linear_velocity - _floor_velocity
+	relative.y = 0.0
+	var error := goal - relative
 	error.y = 0.0
-	var push := (mass * error / delta).limit_length(leg_force)
+	var limit := brake_force if goal.dot(relative) < BRAKE_BELOW * relative.length_squared() else leg_force
+	var push := (mass * error / delta).limit_length(limit)
 	apply_central_force(push)
 	if _floor_body:
 		_floor_body.apply_force(-push, _floor_point - _floor_body.global_position)
 
 
-## Jump with its button, or by flicking the right stick up.
-func _jump() -> void:
+## How fast both hands are rising on average relative to the body, holding on to the peak for a moment.
+func _measure_arm_swing(delta: float) -> void:
+	var height := _left_controller.position.y + _right_controller.position.y
+	var swing := (height - _hands_height) * 0.5 / delta
+	_hands_height = height
+	_arm_swing = maxf(swing if swing < FASTEST_ARM_SWING else 0.0, _arm_swing - ARM_SWING_DECAY * delta)
+
+
+## Jump with its button, or by flicking the right stick up, and swing the arms up to jump higher.
+func _jump(delta: float) -> void:
 	var jump := not _fit_mode and (_right_controller.is_button_pressed(&"jump") or _right_controller.get_vector2(&"primary").y > 0.8)
 	if jump and not _was_jump and _air_time < JUMP_GRACE:
 		_air_time = JUMP_GRACE
-		var impulse := Vector3.UP * mass * jump_speed
-		apply_central_impulse(impulse)
-		if _floor_body:
-			_floor_body.apply_impulse(-impulse, _floor_point - _floor_body.global_position)
+		_take_off_time = ARM_SWING_WINDOW
+		_swing_used = 0.0
+		_push_off(jump_speed)
 	_was_jump = jump
+	if _take_off_time > 0.0:
+		_take_off_time -= delta
+		var boost := clampf((_arm_swing - SLOWEST_ARM_SWING) * arm_swing_jump, 0.0, max_arm_swing_jump)
+		if boost > _swing_used:
+			_push_off(boost - _swing_used)
+			_swing_used = boost
+
+
+## Adds take-off speed, pushing back on whatever's underfoot.
+func _push_off(speed: float) -> void:
+	var impulse := Vector3.UP * mass * speed
+	apply_central_impulse(impulse)
+	if _floor_body:
+		_floor_body.apply_impulse(-impulse, _floor_point - _floor_body.global_position)
 
 
 func _update_hand(hand: PhysicsHand, controller: XRController3D, aim: XRController3D, delta: float) -> void:

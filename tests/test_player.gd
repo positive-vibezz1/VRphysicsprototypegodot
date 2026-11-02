@@ -51,10 +51,11 @@ func _set_pose(tracker: XRControllerTracker, pose: Transform3D) -> void:
 	tracker.set_pose(&"grip", pose, Vector3.ZERO, Vector3.ZERO, XRPose.XR_TRACKING_CONFIDENCE_HIGH)
 
 
-func _add_block(center: Vector3, size: Vector3) -> void:
+func _add_block(center: Vector3, size: Vector3, climbable := false) -> void:
 	var block: StaticBody3D = StaticBody3D.new()
 	block.set_script(load("res://sandbox/parkour_block.gd"))
 	block.set("size", size)
+	block.set("climbable", climbable)
 	block.position = center
 	_range.add_child(block)
 
@@ -82,9 +83,39 @@ func test_speed_builds_up_at_what_the_legs_can_push() -> void:
 func test_clicking_the_left_stick_runs() -> void:
 	await wait_physics_frames(10)
 	_left.set_input(&"primary", Vector2(1, 0))
-	_left.set_input(&"sprint", true)
+	await _click_sprint()
+	await wait_physics_frames(100)
+	assert_almost_eq(_player.linear_velocity.x, _player.sprint_speed, 0.05, "one click runs without holding it")
+	await _click_sprint()
+	await wait_physics_frames(60)
+	assert_almost_eq(_player.linear_velocity.x, _player.move_speed, 0.05, "a second click walks")
+
+
+func test_running_ends_with_the_walk() -> void:
+	await wait_physics_frames(10)
+	_left.set_input(&"primary", Vector2(1, 0))
+	await _click_sprint()
+	await wait_physics_frames(30)
+	_left.set_input(&"primary", Vector2.ZERO)
+	await wait_physics_frames(60)
+	_left.set_input(&"primary", Vector2(1, 0))
+	await wait_physics_frames(100)
+	assert_almost_eq(_player.linear_velocity.x, _player.move_speed, 0.05)
+
+
+func test_run_can_be_clicked_before_setting_off() -> void:
+	await wait_physics_frames(10)
+	await _click_sprint()
+	_left.set_input(&"primary", Vector2(1, 0))
 	await wait_physics_frames(100)
 	assert_almost_eq(_player.linear_velocity.x, _player.sprint_speed, 0.05)
+
+
+func _click_sprint() -> void:
+	_left.set_input(&"sprint", true)
+	await wait_physics_frames(2)
+	_left.set_input(&"sprint", false)
+	await wait_physics_frames(1)
 
 
 func test_a_moving_body_takes_time_to_stop() -> void:
@@ -94,18 +125,18 @@ func test_a_moving_body_takes_time_to_stop() -> void:
 	_left.set_input(&"primary", Vector2.ZERO)
 	var speed := _player.linear_velocity.x
 	var start := _player.global_position.x
-	await wait_physics_frames(10)
+	await wait_physics_frames(5)
 	assert_gt(_player.linear_velocity.x, speed * 0.5, "still moving")
 	await wait_physics_frames(80)
-	var stopping := speed * speed * 0.5 * _player.mass / _player.leg_force
-	assert_almost_eq(_player.global_position.x - start, stopping, 0.15)
+	var stopping := speed * speed * 0.5 * _player.mass / _player.brake_force
+	assert_almost_eq(_player.global_position.x - start, stopping, 0.15, "and brakes harder than it speeds up")
 	assert_almost_eq(_player.linear_velocity.length(), 0.0, 0.01, "and comes to rest")
 
 
 func test_a_running_jump_keeps_its_speed_and_barely_steers() -> void:
 	await wait_physics_frames(10)
 	_left.set_input(&"primary", Vector2(1, 0))
-	_left.set_input(&"sprint", true)
+	await _click_sprint()
 	await wait_physics_frames(100)
 	var speed := _player.linear_velocity.x
 	_right.set_input(&"jump", true)
@@ -113,6 +144,93 @@ func test_a_running_jump_keeps_its_speed_and_barely_steers() -> void:
 	await wait_physics_frames(30)
 	assert_gt(_player.global_position.y, 0.2, "in the air")
 	assert_gt(_player.linear_velocity.x, speed - 1.0, "only the air under the stick to push on")
+
+
+func test_letting_go_of_the_stick_in_a_jump_doesnt_brake_it() -> void:
+	await wait_physics_frames(10)
+	_left.set_input(&"primary", Vector2(1, 0))
+	await wait_physics_frames(70)
+	var speed := _player.linear_velocity.x
+	_right.set_input(&"jump", true)
+	await wait_physics_frames(1)
+	_left.set_input(&"primary", Vector2.ZERO)
+	await wait_physics_frames(25)
+	assert_gt(_player.linear_velocity.x, speed - 0.4, "it carries on through the air")
+
+
+func test_a_gentle_turn_keeps_its_speed_and_a_reversal_brakes() -> void:
+	await wait_physics_frames(10)
+	_left.set_input(&"primary", Vector2(1, 0))
+	await wait_physics_frames(70)
+	var speed := _player.linear_velocity.length()
+	_left.set_input(&"primary", Vector2(1, 0.4))
+	await wait_physics_frames(3)
+	assert_gt(_player.linear_velocity.length(), speed - 0.15, "steering doesn't brake")
+	_left.set_input(&"primary", Vector2(-1, 0))
+	var brake_ticks := 0
+	while _player.linear_velocity.x > 0.0 and brake_ticks < 90:
+		await wait_physics_frames(1)
+		brake_ticks += 1
+	assert_lt(brake_ticks * DT, speed * _player.mass / _player.leg_force * 0.75, "reversing brakes hard")
+
+
+## Swings both hands up at once, as in a jump. A real arm comes up to about head height.
+func _swing_arms_up(distance: float, ticks: int) -> void:
+	for i: int in ticks:
+		var rise := Vector3.UP * distance * (i + 1.0) / ticks
+		_set_pose(_left, LEFT_REST.translated(rise))
+		_set_pose(_right, RIGHT_REST.translated(rise))
+		await wait_physics_frames(1)
+
+
+func _highest_until_landed() -> float:
+	var highest := _player.global_position.y
+	for i: int in 110:
+		await wait_physics_frames(1)
+		highest = maxf(highest, _player.global_position.y)
+	return highest
+
+
+func test_swinging_the_arms_up_into_a_jump_goes_higher() -> void:
+	await wait_physics_frames(10)
+	await _swing_arms_up(0.6, 14)
+	_right.set_input(&"jump", true)
+	var highest := await _highest_until_landed()
+	assert_between(highest, 0.8, 1.2, "from about 50 cm to about a meter")
+
+
+func test_arms_can_swing_just_after_the_button() -> void:
+	await wait_physics_frames(10)
+	_right.set_input(&"jump", true)
+	await wait_physics_frames(2)
+	await _swing_arms_up(0.6, 10)
+	var highest := await _highest_until_landed()
+	assert_gt(highest, 0.75)
+
+
+func test_arms_too_late_or_too_slow_add_nothing() -> void:
+	await wait_physics_frames(10)
+	await _swing_arms_up(0.2, 30)
+	_right.set_input(&"jump", true)
+	var highest := await _highest_until_landed()
+	assert_between(highest, 0.4, 0.65, "reaching slowly is a normal jump")
+	_right.set_input(&"jump", false)
+	_set_pose(_left, LEFT_REST)
+	_set_pose(_right, RIGHT_REST)
+	await wait_physics_frames(60)
+	_right.set_input(&"jump", true)
+	await wait_physics_frames(30)
+	await _swing_arms_up(0.6, 14)
+	assert_lt(_player.global_position.y + _player.linear_velocity.y * 0.5, 0.65, "already in the air")
+
+
+func test_the_hardest_swing_is_capped() -> void:
+	await wait_physics_frames(10)
+	await _swing_arms_up(0.8, 10)
+	_right.set_input(&"jump", true)
+	var highest := await _highest_until_landed()
+	var fastest := _player.jump_speed + _player.max_arm_swing_jump
+	assert_lt(highest, fastest * fastest / (2.0 * 9.8) + 0.05)
 
 
 func test_walking_into_a_wall_stops_the_view_too() -> void:
@@ -151,6 +269,7 @@ func test_a_small_step_is_walked_up_and_a_tall_one_stops_the_body() -> void:
 
 func test_hauling_up_a_wall_and_leaning_over_gets_on_top_of_it() -> void:
 	_add_block(Vector3(0, 0.65, 2), Vector3(3, 1.3, 1.4))
+	_add_block(Vector3(0, 1.33, 2.68), Vector3(3, 0.06, 0.1), true)
 	var hand: PhysicsHand = _player.get_node("RightHand")
 	_player.global_position = Vector3(0, 0, 3.05)
 	await wait_physics_frames(5)
@@ -219,7 +338,7 @@ func test_standing_on_a_cube_stays_on_top_of_it() -> void:
 
 ## A bar in reach of where the right hand rests, clear of the body, for a player at z = 3 and the height given.
 func _bar_at_right_hand(player_y := 0.0) -> void:
-	_add_block(Vector3(0.2, player_y + 1.2, 2.73), Vector3(0.5, 0.05, 0.05))
+	_add_block(Vector3(0.2, player_y + 1.2, 2.73), Vector3(0.5, 0.05, 0.05), true)
 
 
 func test_pulling_down_on_a_hold_lifts_the_body_and_it_hangs_there() -> void:
@@ -256,7 +375,7 @@ func test_letting_go_mid_pull_flies_on_and_falls() -> void:
 
 
 func test_two_arms_haul_up_faster_than_one() -> void:
-	_add_block(Vector3(0, 1.2, 2.73), Vector3(1, 0.05, 0.05))
+	_add_block(Vector3(0, 1.2, 2.73), Vector3(1, 0.05, 0.05), true)
 	await wait_physics_frames(10)
 	_right.set_input(&"grip", 1.0)
 	await wait_physics_frames(3)
@@ -293,16 +412,21 @@ func test_an_arm_too_weak_for_the_body_slips_off() -> void:
 
 
 func test_only_climbable_surfaces_can_be_gripped() -> void:
+	_add_block(Vector3(0.2, 1.2, 2.73), Vector3(0.5, 0.05, 0.05))
 	await wait_physics_frames(10)
-	var near_floor := RIGHT_REST
-	near_floor.origin.y = 0.08
 	var hand: PhysicsHand = _player.get_node("RightHand")
-	for i: int in 45:
-		_set_pose(_right, RIGHT_REST.interpolate_with(near_floor, float(i + 1) / 45.0))
-		await wait_physics_frames(1)
 	_right.set_input(&"grip", 1.0)
 	await wait_physics_frames(3)
-	assert_false(hand.climbing)
+	assert_false(hand.climbing, "a plain block is no use")
+	_right.set_input(&"grip", 0.0)
+	await wait_physics_frames(2)
+	var pipe: StaticBody3D = StaticBody3D.new()
+	pipe.set_script(load("res://sandbox/parkour_pipe.gd"))
+	pipe.position = Vector3(0.2, 1.1, 2.73)
+	_range.add_child(pipe)
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	assert_true(hand.climbing, "a pipe is")
 
 
 func _pull_right_hand_down(distance: float, ticks: int) -> void:
@@ -357,7 +481,7 @@ func test_grapple_swings_at_a_held_length() -> void:
 	assert_gt(_player.global_position.y, 1.0, "not dropping to the floor")
 
 
-func test_grapple_only_catches_climbable_surfaces() -> void:
+func test_grapple_only_catches_parkour_surfaces() -> void:
 	await wait_physics_frames(10)
 	var grapple: Grapple = _player.get_node("RightGrapple")
 	_point_right_hand(Vector3.DOWN)

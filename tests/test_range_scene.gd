@@ -31,16 +31,21 @@ func test_range_loads_and_settles() -> void:
 	assert_eq(ar.chamber, Gun.Chamber.LIVE)
 
 
-func test_parkour_course_is_climbable_and_clear_of_the_firing_lanes() -> void:
+func test_parkour_course_has_holds_on_it_and_is_clear_of_the_firing_lanes() -> void:
 	var course: Node3D = _range.get_node("Parkour")
-	var blocks := 0
+	var holds := 0
 	for block: Node in course.get_children():
 		if block is StaticBody3D:
-			blocks += 1
-			assert_ne((block as StaticBody3D).collision_layer & PhysicsHand.CLIMBABLE_LAYER, 0, block.name + " can be gripped")
-			assert_ne((block as StaticBody3D).collision_layer & 1, 0, block.name + " is world")
+			var layers := (block as StaticBody3D).collision_layer
+			holds += 1 if layers & PhysicsHand.CLIMBABLE_LAYER else 0
+			assert_ne(layers & 1, 0, block.name + " is world")
+			assert_ne(layers & 2048, 0, block.name + " catches the grapple")
 			assert_gt((block as Node3D).global_position.z, 5.0, block.name + " is behind the shooter")
-	assert_gt(blocks, 30)
+	assert_gt(holds, 25)
+	for hold: String in ["Rung1", "Bar1", "Drainpipe", "OverheadPipe", "SteepRail", "LowWallLip", "Crevice1", "CliffTop"]:
+		assert_ne((course.get_node(hold) as StaticBody3D).collision_layer & PhysicsHand.CLIMBABLE_LAYER, 0, hold)
+	for plain: String in ["LowWall", "Cliff", "TowerA", "EasyRamp", "Hop1", "Pillar"]:
+		assert_eq((course.get_node(plain) as StaticBody3D).collision_layer & PhysicsHand.CLIMBABLE_LAYER, 0, plain)
 	var player: Player = _range.get_node("Player")
 	for walkable: String in ["EasyRamp", "HardRamp", "Kicker"]:
 		var normal: Vector3 = (course.get_node(walkable) as Node3D).global_basis.y
