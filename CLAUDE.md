@@ -31,6 +31,10 @@ The test command runs physics at 10 times real speed. About 1 run in 20 fails on
 
 Claude can't see or feel anything in the headset. After any change that affects feel or handling, list exactly what ruby should check in VR.
 
+## Controls
+
+Buttons are game actions in `openxr_action_map.tres`, bound natively per interaction profile: Steam Frame (`valve/frame_controller_valve`), Oculus Touch, and `khr/generic_controller` as a fallback for anything else. The runtime picks the profile for the hardware. On the Frame, face buttons (A, B, X, Y) are all on the right and the left has a D-pad. A new action needs a binding in each profile and a line in the controls text in `sandbox/range.gd`.
+
 ## Layout
 
 ```

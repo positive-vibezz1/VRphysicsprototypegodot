@@ -49,7 +49,8 @@ var aim_direction := Vector3.ZERO
 var input_grip := 0.0
 var input_trigger := 0.0
 var input_mag_release := false
-var input_bolt_button := false
+var input_bolt_release := false
+var input_fire_mode := false
 
 var _fingers: AnimationTree
 var _model: Node3D
@@ -63,7 +64,8 @@ var _previous_target := Transform3D.IDENTITY
 var _target_valid := false
 var _grip_armed := true
 var _was_mag_release := false
-var _was_bolt_button := false
+var _was_bolt_release := false
+var _was_fire_mode := false
 
 @onready var _laser: MeshInstance3D = $Laser
 
@@ -166,11 +168,13 @@ func _update_held_controls() -> void:
 		gun.finger_force = input_trigger * max_finger_force
 		if input_mag_release and not _was_mag_release:
 			gun.release_magazine()
-		if input_bolt_button and not _was_bolt_button:
-			gun.press_bolt_button()
+		var released := input_bolt_release and not _was_bolt_release and gun.release_locked_bolt()
+		var changed := input_fire_mode and not _was_fire_mode and not released and gun.cycle_fire_mode()
+		if released or changed:
 			_pulse(0.3, 0.02)
 	_was_mag_release = input_mag_release
-	_was_bolt_button = input_bolt_button
+	_was_bolt_release = input_bolt_release
+	_was_fire_mode = input_fire_mode
 
 
 func _grab_nearest() -> void:

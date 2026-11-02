@@ -1,7 +1,20 @@
 extends Node3D
-## Test range. Shows the numbers of the last shot on the table, since those can't be felt directly.
+## Test range. Shows the controls for the controller in use, and the numbers of the last shot, since those can't
+## be felt directly.
+
+const FRAME_PROFILE := "/interaction_profiles/valve/frame_controller_valve"
+const COMMON_CONTROLS := """Grip: grab. Point at a gun or mag up to 1.5 m away, then grip, to pull it to you.
+Trigger: fire. Free hand on the slide or charging handle: rack.
+"""
+const FRAME_CONTROLS := COMMON_CONTROLS + """A or D-pad down: drop mag. B or D-pad right: fire mode. X or D-pad left: bolt release.
+Left stick: move, L3 or L1 to run. Right stick: turn, R3 or R1 or flick up to jump.
+Menu: reset. Hold View with an empty left hand: adjust where your hands sit."""
+const TOUCH_CONTROLS := COMMON_CONTROLS + """A or X: drop mag. B or Y: fire mode, or bolt release when locked back.
+Left stick: move, click to run. Right stick: turn, click or flick up to jump.
+Menu: reset. Hold Y with an empty left hand: adjust where your hands sit."""
 
 @onready var _readout: Label3D = $Table/Readout
+@onready var _controls: Label3D = $Table/Controls
 
 
 func _ready() -> void:
@@ -9,6 +22,13 @@ func _ready() -> void:
 	for gun: Gun in [$Pistol as Gun, $AR as Gun]:
 		gun.shot_fired.connect(_on_shot_fired.bind(gun))
 		gun.misfired.connect(_on_misfired.bind(gun))
+	var player: Player = $Player
+	player.controllers_changed.connect(_show_controls)
+	_show_controls(player.controller_profile)
+
+
+func _show_controls(profile: String) -> void:
+	_controls.text = FRAME_CONTROLS if profile == FRAME_PROFILE else TOUCH_CONTROLS
 
 
 func _on_shot_fired(shot: GasSim.Shot, strike_energy: float, gun: Gun) -> void:

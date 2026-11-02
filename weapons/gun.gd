@@ -125,15 +125,23 @@ func release_magazine() -> void:
 	mag_well.release()
 
 
-## The B/Y button: sends a locked back bolt home, otherwise moves the selector.
-func press_bolt_button() -> void:
-	if catch_engaged:
-		release_bolt()
-	elif fire_control.selector_modes.size() > 1:
-		fire_control.cycle_selector()
-	else:
-		return
+## Sends a locked back bolt home. Returns whether there was one, because on controllers with fewer buttons this
+## shares a button with the fire mode.
+func release_locked_bolt() -> bool:
+	if not catch_engaged:
+		return false
+	release_bolt()
 	Ballistics.pool.play_click(frame.global_position)
+	return true
+
+
+## Returns whether the gun has more than one fire mode to change to.
+func cycle_fire_mode() -> bool:
+	if fire_control.selector_modes.size() < 2:
+		return false
+	fire_control.cycle_selector()
+	Ballistics.pool.play_click(frame.global_position)
+	return true
 
 
 func release_bolt() -> void:

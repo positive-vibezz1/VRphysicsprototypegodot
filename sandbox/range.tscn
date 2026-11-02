@@ -117,14 +117,15 @@ shape = SubResource("table_shape")
 mesh = SubResource("table_mesh")
 surface_material_override/0 = SubResource("wood")
 
-[node name="Readout" type="Label3D" parent="Table"]
-transform = Transform3D(1, 0, 0, 0, 0.866, 0.5, 0, -0.5, 0.866, 0, 0.75, -0.45)
+[node name="Controls" type="Label3D" parent="Table"]
+transform = Transform3D(1, 0, 0, 0, 0.866, 0.5, 0, -0.5, 0.866, 0, 0.72, -0.45)
 pixel_size = 0.0012
-text = "Grip: grab. Point at a gun or mag up to 1.5 m away, then grip, to pull it to you.
-Trigger: fire. Free hand on the slide or charging handle: rack.
-A/X: drop mag. B/Y: fire mode (semi, burst, auto, safe), or bolt release when locked back.
-Left stick: move, click to run. Right stick: turn, click or flick up to jump. Menu: reset.
-Hold X+Y with an empty left hand: adjust where your hands sit."
+font_size = 36
+outline_size = 6
+
+[node name="Readout" type="Label3D" parent="Table"]
+transform = Transform3D(1, 0, 0, 0, 0.866, 0.5, 0, -0.5, 0.866, 0, 1.08, -0.45)
+pixel_size = 0.0012
 font_size = 36
 outline_size = 6
 

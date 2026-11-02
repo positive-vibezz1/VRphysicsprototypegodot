@@ -202,22 +202,37 @@ func test_ar_burst_fires_three_per_pull() -> void:
 	assert_eq(_shots.size(), 6, "three more after a reset")
 
 
-func test_b_button_moves_the_selector_unless_the_bolt_is_locked() -> void:
+func test_fire_mode_steps_and_shows_on_the_gun() -> void:
 	var gun := await _spawn_held(AR_SCENE)
 	var label: Label3D = gun.frame.get_node("SelectorLabel")
 	assert_eq(label.text, "SEMI")
-	gun.press_bolt_button()
+	assert_true(gun.cycle_fire_mode())
 	assert_eq(gun.fire_control.selector, FireControl.Selector.BURST)
 	assert_eq(label.text, "BURST", "the gun shows what it is set to")
+
+
+func test_a_shared_button_releases_a_locked_bolt_instead_of_changing_fire_mode() -> void:
+	var gun := await _spawn_held(AR_SCENE)
 	gun.catch_engaged = true
-	gun.press_bolt_button()
-	assert_eq(gun.fire_control.selector, FireControl.Selector.BURST, "locked bolt: the button releases it")
-	assert_false(gun.catch_engaged)
+	_hand.input_bolt_release = true
+	_hand.input_fire_mode = true
+	await wait_physics_frames(2)
+	_hand.input_bolt_release = false
+	_hand.input_fire_mode = false
+	assert_false(gun.catch_engaged, "bolt released")
+	assert_eq(gun.fire_control.selector, FireControl.Selector.SEMI, "fire mode left alone")
+	await wait_physics_frames(2)
+	_hand.input_bolt_release = true
+	_hand.input_fire_mode = true
+	await wait_physics_frames(2)
+	_hand.input_bolt_release = false
+	_hand.input_fire_mode = false
+	assert_eq(gun.fire_control.selector, FireControl.Selector.BURST, "with no locked bolt it changes the fire mode")
 
 
 func test_pistol_has_no_selector_to_change() -> void:
 	var gun := await _spawn_held(PISTOL_SCENE)
-	gun.press_bolt_button()
+	assert_false(gun.cycle_fire_mode())
 	assert_eq(gun.fire_control.selector, FireControl.Selector.SEMI)
 
 

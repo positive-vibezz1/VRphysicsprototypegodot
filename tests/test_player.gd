@@ -66,7 +66,7 @@ func test_clicking_the_left_stick_runs() -> void:
 	await wait_physics_frames(10)
 	var start := _player.global_position
 	_left.set_input(&"primary", Vector2(0, 1))
-	_left.set_input(&"primary_click", true)
+	_left.set_input(&"sprint", true)
 	await wait_physics_frames(45)
 	assert_gt((_player.global_position - start).length(), _player.move_speed * 46.0 * DT + 0.5)
 
@@ -74,7 +74,7 @@ func test_clicking_the_left_stick_runs() -> void:
 func test_right_stick_click_jumps_and_lands() -> void:
 	await wait_physics_frames(10)
 	var floor_y := _player.global_position.y
-	_right.set_input(&"primary_click", true)
+	_right.set_input(&"jump", true)
 	var highest := floor_y
 	for i: int in 70:
 		await wait_physics_frames(1)
@@ -91,7 +91,7 @@ func test_flicking_the_right_stick_up_jumps() -> void:
 	assert_gt(_player.global_position.y, floor_y + 0.2)
 
 
-func test_b_button_moves_the_selector_on_a_held_ar() -> void:
+func test_fire_mode_button_moves_the_selector_on_a_held_ar() -> void:
 	_player.global_position = Vector3.ZERO
 	var ar: Gun = _range.get_node("AR")
 	await wait_physics_frames(30)
@@ -106,14 +106,14 @@ func test_b_button_moves_the_selector_on_a_held_ar() -> void:
 	_right.set_input(&"grip", 1.0)
 	await wait_physics_frames(3)
 	assert_eq(hand.held, ar.grip)
-	_right.set_input(&"by_button", true)
+	_right.set_input(&"fire_mode", true)
 	await wait_physics_frames(2)
-	_right.set_input(&"by_button", false)
+	_right.set_input(&"fire_mode", false)
 	await wait_physics_frames(2)
 	assert_eq(ar.fire_control.selector, FireControl.Selector.BURST)
-	_right.set_input(&"by_button", true)
+	_right.set_input(&"fire_mode", true)
 	await wait_physics_frames(2)
-	_right.set_input(&"by_button", false)
+	_right.set_input(&"fire_mode", false)
 	await wait_physics_frames(2)
 	assert_eq(ar.fire_control.selector, FireControl.Selector.AUTO)
 
@@ -132,11 +132,9 @@ func test_aim_pose_points_the_laser() -> void:
 
 
 func _hold_fit_buttons() -> void:
-	_left.set_input(&"ax_button", true)
-	_left.set_input(&"by_button", true)
+	_left.set_input(&"hand_fit", true)
 	await wait_physics_frames(95)
-	_left.set_input(&"ax_button", false)
-	_left.set_input(&"by_button", false)
+	_left.set_input(&"hand_fit", false)
 	await wait_physics_frames(2)
 
 
@@ -151,7 +149,7 @@ func test_hand_fit_moves_the_hands_and_comes_back_next_time() -> void:
 	assert_false(label.visible)
 
 	await _hold_fit_buttons()
-	assert_true(label.visible, "holding X and Y enters the mode")
+	assert_true(label.visible, "holding the button enters the mode")
 
 	var standing := _player.global_position
 	_left.set_input(&"primary", Vector2(1, 0.5))
@@ -195,6 +193,62 @@ func test_a_gun_goes_into_the_fitted_hand() -> void:
 	var expected: Vector3 = (hand.global_transform * fit).origin
 	assert_almost_eq(pistol.grip.global_position.distance_to(expected), 0.0, 0.001)
 	hand.release()
+
+
+func test_the_range_shows_the_controls_for_the_controller_in_use() -> void:
+	var controls: Label3D = _range.get_node("Table/Controls")
+	assert_string_contains(controls.text, "B or Y", "Touch style by default")
+	_right.profile = "/interaction_profiles/valve/frame_controller_valve"
+	await wait_physics_frames(1)
+	assert_string_contains(controls.text, "D-pad", "Frame layout")
+	assert_string_contains(controls.text, "R3", "Frame layout")
+	_right.profile = "/interaction_profiles/oculus/touch_controller"
+	await wait_physics_frames(1)
+	assert_string_contains(controls.text, "B or Y", "and back")
+
+
+func test_each_kind_of_controller_keeps_its_own_hand_fit() -> void:
+	_player.fit_path = "user://test_hand_fit.cfg"
+	DirAccess.remove_absolute(_player.fit_path)
+	await wait_physics_frames(5)
+	_right.profile = "/interaction_profiles/oculus/touch_controller"
+	await wait_physics_frames(1)
+	_player._fit_offset = Vector3(0.01, 0.02, 0.03)
+	_player._save_fit()
+	_right.profile = "/interaction_profiles/valve/frame_controller_valve"
+	await wait_physics_frames(1)
+	assert_eq(_player._fit_offset, Vector3.ZERO, "the Frame starts from its own fit")
+	_right.profile = "/interaction_profiles/oculus/touch_controller"
+	await wait_physics_frames(1)
+	assert_eq(_player._fit_offset, Vector3(0.01, 0.02, 0.03), "and Touch gets its back")
+	DirAccess.remove_absolute(_player.fit_path)
+
+
+func test_every_action_is_bound_on_the_frame_and_on_touch() -> void:
+	var map: OpenXRActionMap = load("res://openxr_action_map.tres")
+	var action_set: OpenXRActionSet = map.action_sets[0]
+	for profile_path: String in ["/interaction_profiles/valve/frame_controller_valve", "/interaction_profiles/oculus/touch_controller"]:
+		var profile := map.find_interaction_profile(profile_path)
+		assert_not_null(profile, profile_path)
+		for action: OpenXRAction in action_set.actions:
+			var bound := false
+			for binding: OpenXRIPBinding in profile.bindings:
+				bound = bound or binding.action == action
+			assert_true(bound, action.resource_name + " on " + profile_path)
+
+
+func test_game_only_reads_actions_in_the_map() -> void:
+	var map: OpenXRActionMap = load("res://openxr_action_map.tres")
+	var action_set: OpenXRActionSet = map.action_sets[0]
+	var code := FileAccess.get_file_as_string("res://player/player.gd") + FileAccess.get_file_as_string("res://player/physics_hand.gd")
+	var used := RegEx.create_from_string("(?:is_button_pressed|get_float|get_vector2|trigger_haptic_pulse)\\(&\"(\\w+)\"")
+	var found := used.search_all(code)
+	assert_gt(found.size(), 5, "the search finds the reads")
+	var names: Array[String] = []
+	for action: OpenXRAction in action_set.actions:
+		names.append(action.resource_name)
+	for match_result: RegExMatch in found:
+		assert_has(names, match_result.get_string(1))
 
 
 func test_small_stick_input_is_ignored() -> void:
@@ -274,9 +328,9 @@ func test_controller_buttons_pick_up_and_fire() -> void:
 	await wait_physics_frames(3)
 	_right.set_input(&"trigger", 0.0)
 	assert_signal_emitted(pistol, "shot_fired", "trigger fires it")
-	_right.set_input(&"ax_button", true)
+	_right.set_input(&"mag_release", true)
 	await wait_physics_frames(2)
-	assert_false(pistol.mag_well.latched, "A/X drops the magazine")
+	assert_false(pistol.mag_well.latched, "its button drops the magazine")
 	_right.set_input(&"grip", 0.0)
 	await wait_physics_frames(2)
 	assert_null(hand.held, "letting go drops the gun")
