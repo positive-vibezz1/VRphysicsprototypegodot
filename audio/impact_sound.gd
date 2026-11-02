@@ -12,8 +12,8 @@ const SHORTEST_GAP := 0.06
 @export var surface := Sounds.Surface.METAL
 ## The mass of everything held rigidly to this body, which rings as one. 0 is just the body.
 @export var ringing_mass := 0.0
-## How much of a hit's energy comes out as sound. Hard things hardly lose any of it on the way, but something padded
-## takes nearly all of it into itself.
+## How much of a hit's energy comes out of this body as sound. A padded thing takes nearly all of it into itself, and
+## what it hit is what gets heard. That still gets its full share.
 @export var sound_share := 1.0
 
 var _velocity := Vector3.ZERO
@@ -60,11 +60,11 @@ func _physics_process(_delta: float) -> void:
 	# A bullet reports its own hits, and a stock on a shoulder is no knock.
 	if collider is Bullet or collider is AnimatableBody3D:
 		return
-	var energy := 0.5 * impulse * strike * strike / closing * sound_share
+	var energy := 0.5 * impulse * strike * strike / closing
 	var point := state.get_contact_local_position(strongest)
 	var other := collider as RigidBody3D
 	Sounds.pool.impact(
-		point, surface, energy * other.mass / (other.mass + _body.mass) if other else energy, strike,
+		point, surface, energy * sound_share * other.mass / (other.mass + _body.mass) if other else energy * sound_share, strike,
 		ringing_mass if ringing_mass > 0.0 else _body.mass, Sounds.surface_of(collider), other.mass if other else 0.0
 	)
 	if not other:

@@ -7,12 +7,13 @@ extends Node
 ## A hit made a sound. Energy in J, and what it came out as where it was made.
 signal played(surface: Surface, energy: float, volume: float, pitch: float)
 
-## METAL is one resonant piece, a plate or a pipe or a can. GUN is a solid thing bolted together from many parts.
-enum Surface { CONCRETE, METAL, BRASS, WOOD, SOFT, WATER, GUN }
+## METAL is a thin resonant piece, a plate or a can. BAR is heavy steel fixed in place, a pipe or a ledge's lip. GUN is a
+## solid thing bolted together from many parts. SOFT is anything padded, and HAND is a palm, with more of a slap to it.
+enum Surface { CONCRETE, METAL, BRASS, WOOD, SOFT, WATER, GUN, BAR, HAND }
 
 const SURFACE_PATHS: Array[String] = [
 	"res://audio/concrete.tres", "res://audio/metal.tres", "res://audio/brass.tres", "res://audio/wood.tres",
-	"res://audio/soft.tres", "res://audio/water.tres", "res://audio/gun.tres",
+	"res://audio/soft.tres", "res://audio/water.tres", "res://audio/gun.tres", "res://audio/bar.tres", "res://audio/hand.tres",
 ]
 ## Enough for a burst from the AR (5 shots ringing at once) with the casings and the steel over it.
 const VOICE_COUNT := 16
@@ -164,11 +165,12 @@ func impact_on(collider: Object, position: Vector3, energy: float, speed: float,
 
 
 ## Something padded coming down on something: a foot on the ground, or fingers closing on a gun. The mass is what comes
-## down, and the ringing mass all of what it's part of, since fingers sound like a hand and not like something tiny.
-func soft_hit(position: Vector3, mass: float, ringing_mass: float, speed: float, on: Object) -> void:
+## down, and the ringing mass all of what it's part of, since fingers sound like a hand and not like something tiny, and
+## it's the whole hand that what it closes on feels.
+func soft_hit(position: Vector3, surface: Surface, mass: float, ringing_mass: float, speed: float, on: Object) -> void:
 	var energy := 0.5 * mass * speed * speed
-	impact(position, Surface.SOFT, energy, speed, ringing_mass, surface_of(on), _ringing_mass(on as RigidBody3D))
-	impact_on(on, position, energy, speed, mass, Surface.SOFT)
+	impact(position, surface, energy, speed, ringing_mass, surface_of(on), _ringing_mass(on as RigidBody3D))
+	impact_on(on, position, energy, speed, ringing_mass, surface)
 
 
 ## What rings when this body is hit: 0 for no body, and all of a gun for any part of it.

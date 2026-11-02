@@ -503,7 +503,7 @@ func test_grabbing_makes_a_sound_of_the_glove_and_what_it_closed_on() -> void:
 	Sounds.pool.played.connect(listener)
 	_hold(hand, gun.grip)
 	Sounds.pool.played.disconnect(listener)
-	assert_has(surfaces, Sounds.Surface.SOFT)
+	assert_has(surfaces, Sounds.Surface.HAND)
 	assert_has(surfaces, Sounds.Surface.GUN)
 
 
@@ -530,8 +530,7 @@ func test_a_grip_is_a_quiet_hand_on_the_whole_gun() -> void:
 		assert_between(sound["pitch"] as float, 0.9, 1.2)
 
 
-func test_a_hand_hitting_steel_is_a_quiet_thud_with_hardly_a_ring() -> void:
-	var at := Vector3(92, 100, 0)
+func _slap(surface: Sounds.Surface, at: Vector3) -> Dictionary[Sounds.Surface, float]:
 	var wall := StaticBody3D.new()
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
@@ -539,7 +538,7 @@ func test_a_hand_hitting_steel_is_a_quiet_thud_with_hardly_a_ring() -> void:
 	shape.shape = box
 	wall.add_child(shape)
 	wall.position = at + Vector3(0.3, 0, 0)
-	wall.set_meta(&"surface", Sounds.Surface.METAL)
+	wall.set_meta(&"surface", surface)
 	add_child_autofree(wall)
 	var hand := _hand(at)
 	await wait_physics_frames(50)
@@ -552,13 +551,20 @@ func test_a_hand_hitting_steel_is_a_quiet_thud_with_hardly_a_ring() -> void:
 		hand.set_target(pose)
 		await wait_physics_frames(1)
 	Sounds.pool.played.disconnect(listener)
-	var thud := 0.0
-	var ring := 0.0
+	var loudest: Dictionary[Sounds.Surface, float] = {}
 	for sound: Dictionary in sounds:
-		if sound["surface"] == Sounds.Surface.SOFT:
-			thud = maxf(thud, sound["volume"] as float)
-		elif sound["surface"] == Sounds.Surface.METAL:
-			ring = maxf(ring, sound["volume"] as float)
-	assert_gt(thud, 0.0, "a hand does make a sound")
-	assert_lt(thud, 0.2, "not a loud one")
-	assert_lt(ring, thud * 0.5, "and it's mostly the hand you hear, not the steel")
+		var heard: Sounds.Surface = sound["surface"]
+		loudest[heard] = maxf(loudest.get(heard, 0.0), sound["volume"] as float)
+	return loudest
+
+
+func test_a_hand_on_a_steel_bar_is_a_solid_knock_of_the_bar() -> void:
+	var loudest := await _slap(Sounds.Surface.BAR, Vector3(92, 100, 0))
+	assert_between(loudest.get(Sounds.Surface.BAR, 0.0), 0.05, 0.25, "the steel is what you hear, and not too loudly")
+	assert_gt(loudest.get(Sounds.Surface.BAR, 0.0), loudest.get(Sounds.Surface.HAND, 0.0), "more than the hand on it")
+	assert_gt(loudest.get(Sounds.Surface.HAND, 0.0), 0.01, "though there's a hand in it")
+
+
+func test_a_hand_barely_rings_a_thin_plate_compared_to_a_steel_bar() -> void:
+	var plate := await _slap(Sounds.Surface.METAL, Vector3(96, 100, 0))
+	assert_lt(plate.get(Sounds.Surface.METAL, 0.0), 0.1, "a hand's too soft to set off its high modes")

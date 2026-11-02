@@ -38,5 +38,5 @@ surface_material_override/0 = SubResource("laser_material")
 
 [node name="ImpactSound" type="Node" parent="."]
 script = ExtResource("impact_sound")
-surface = 4
-sound_share = 0.03
+surface = 8
+sound_share = 0.05

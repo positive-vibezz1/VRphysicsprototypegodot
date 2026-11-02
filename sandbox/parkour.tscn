@@ -144,6 +144,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.33, 7.72)
 script = ExtResource("1")
 size = Vector3(3, 0.06, 0.1)
 material = SubResource("pipe")
+metadata/surface = 7
 climbable = true
 
 [node name="HighWall" type="StaticBody3D" parent="."]
@@ -157,6 +158,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 2.23, 10.42)
 script = ExtResource("1")
 size = Vector3(3, 0.06, 0.1)
 material = SubResource("pipe")
+metadata/surface = 7
 climbable = true
 
 [node name="Cliff" type="StaticBody3D" parent="."]
@@ -256,6 +258,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3.03, 7.05)
 script = ExtResource("1")
 size = Vector3(2, 0.06, 0.1)
 material = SubResource("pipe")
+metadata/surface = 7
 climbable = true
 
 [node name="TowerBLip" type="StaticBody3D" parent="."]
@@ -263,6 +266,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 3.03, 15.05)
 script = ExtResource("1")
 size = Vector3(2, 0.06, 0.1)
 material = SubResource("pipe")
+metadata/surface = 7
 climbable = true
 
 [node name="TowerL" type="StaticBody3D" parent="."]

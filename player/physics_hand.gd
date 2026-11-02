@@ -440,7 +440,7 @@ func _on_touched(body: Node) -> void:
 
 
 func _grip_sound(on: Object) -> void:
-	Sounds.pool.soft_hit(global_position, FINGERS_MASS, mass, maxf(linear_velocity.length(), SLOWEST_GRIP), on)
+	Sounds.pool.soft_hit(global_position, Sounds.Surface.HAND, FINGERS_MASS, mass, maxf(linear_velocity.length(), SLOWEST_GRIP), on)
 
 
 func _pulse(amplitude: float, duration: float, frequency := 0.0) -> void:

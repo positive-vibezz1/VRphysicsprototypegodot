@@ -108,6 +108,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.02, 2.03, -32)
 script = ExtResource("1")
 size = Vector3(0.1, 0.06, 4)
 material = SubResource("lip")
+metadata/surface = 7
 climbable = true
 
 [node name="Dummy7" parent="." instance=ExtResource("3")]

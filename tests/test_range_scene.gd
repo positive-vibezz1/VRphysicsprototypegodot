@@ -219,7 +219,8 @@ func test_every_body_that_can_hit_something_rings_and_the_table_is_wood() -> voi
 	assert_eq((_range.get_node("Crate1") as Node).get_meta(&"surface"), Sounds.Surface.WOOD)
 	assert_eq((_range.get_node("Can1") as Node).get_meta(&"surface"), Sounds.Surface.METAL)
 	assert_eq((_range.get_node("Pistol/Frame") as Node).get_meta(&"surface"), Sounds.Surface.GUN)
-	assert_eq((_range.get_node("Parkour/Rung1") as Node).get_meta(&"surface"), Sounds.Surface.METAL)
+	assert_eq((_range.get_node("Parkour/Rung1") as Node).get_meta(&"surface"), Sounds.Surface.BAR)
+	assert_eq((_range.get_node("Parkour/LowWallLip") as Node).get_meta(&"surface"), Sounds.Surface.BAR, "red lips are steel too")
 	assert_false((_range.get_node("Floor") as Node).has_meta(&"surface"), "concrete is the default")
 
 
