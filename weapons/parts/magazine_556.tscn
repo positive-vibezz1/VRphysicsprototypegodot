@@ -1,26 +1,51 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://weapons/parts/magazine.gd" id="1"]
 [ext_resource type="Resource" path="res://weapons/parts/cartridge_556x45.tres" id="2"]
 [ext_resource type="Script" path="res://player/grab_point.gd" id="3"]
+[ext_resource type="Script" path="res://weapons/parts/profile_mesh.gd" id="4"]
+[ext_resource type="Material" path="res://weapons/parts/materials/polymer.tres" id="5"]
+[ext_resource type="Material" path="res://weapons/parts/materials/polymer_dark.tres" id="6"]
+[ext_resource type="Material" path="res://weapons/parts/materials/brass.tres" id="7"]
 
 [sub_resource type="BoxShape3D" id="shape"]
 size = Vector3(0.024, 0.18, 0.062)
 
-[sub_resource type="BoxMesh" id="body_mesh"]
-size = Vector3(0.024, 0.18, 0.062)
+[sub_resource type="PrimitiveMesh" id="body"]
+script = ExtResource("4")
+points = PackedVector2Array(-0.031, -0.001, 0.031, -0.001, 0.0305, -0.09, 0.0275, -0.172, -0.0345, -0.172, -0.0325, -0.09)
+width = 0.0232
+material = ExtResource("6")
 
-[sub_resource type="StandardMaterial3D" id="polymer"]
-albedo_color = Color(0.09, 0.09, 0.1, 1)
-roughness = 0.75
+[sub_resource type="PrimitiveMesh" id="floorplate"]
+script = ExtResource("4")
+points = PackedVector2Array(-0.036, -0.1715, 0.029, -0.1715, 0.029, -0.18, -0.036, -0.18)
+width = 0.025
+material = ExtResource("6")
 
-[sub_resource type="BoxMesh" id="round_mesh"]
-size = Vector3(0.01, 0.01, 0.055)
+[sub_resource type="BoxMesh" id="rib"]
+material = ExtResource("5")
+size = Vector3(0.024, 0.0025, 0.056)
 
-[sub_resource type="StandardMaterial3D" id="brass"]
-albedo_color = Color(0.83, 0.65, 0.25, 1)
-metallic = 0.8
-roughness = 0.35
+[sub_resource type="BoxMesh" id="feed_lip"]
+material = ExtResource("6")
+size = Vector3(0.004, 0.006, 0.03)
+
+[sub_resource type="CylinderMesh" id="case"]
+material = ExtResource("7")
+top_radius = 0.003
+bottom_radius = 0.0047
+height = 0.045
+radial_segments = 10
+rings = 0
+
+[sub_resource type="CylinderMesh" id="bullet"]
+material = ExtResource("7")
+top_radius = 0.0005
+bottom_radius = 0.0028
+height = 0.012
+radial_segments = 10
+rings = 0
 
 [node name="Magazine556" type="RigidBody3D"]
 collision_layer = 32
@@ -38,14 +63,42 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, 0)
 shape = SubResource("shape")
 
 [node name="Body" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, 0)
-mesh = SubResource("body_mesh")
-surface_material_override/0 = SubResource("polymer")
+mesh = SubResource("body")
+
+[node name="Floorplate" type="MeshInstance3D" parent="."]
+mesh = SubResource("floorplate")
+
+[node name="Rib1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.03, -0.002)
+mesh = SubResource("rib")
+
+[node name="Rib2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.065, -0.002)
+mesh = SubResource("rib")
+
+[node name="Rib3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, -0.003)
+mesh = SubResource("rib")
+
+[node name="Rib4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.135, -0.004)
+mesh = SubResource("rib")
+
+[node name="FeedLipL" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.009, 0.002, -0.004)
+mesh = SubResource("feed_lip")
+
+[node name="FeedLipR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.009, 0.002, -0.004)
+mesh = SubResource("feed_lip")
 
 [node name="TopRound" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.004, 0)
-mesh = SubResource("round_mesh")
-surface_material_override/0 = SubResource("brass")
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.004, 0.005)
+mesh = SubResource("case")
+
+[node name="Bullet" type="MeshInstance3D" parent="TopRound"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0285, 0)
+mesh = SubResource("bullet")
 
 [node name="GrabPoint" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, -0.1, 0)
