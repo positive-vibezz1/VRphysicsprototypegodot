@@ -52,6 +52,14 @@ size = Vector3(0.006, 0.006, 0.01)
 [sub_resource type="SphereShape3D" id="well_shape"]
 radius = 0.05
 
+[sub_resource type="SphereMesh" id="flash_mesh"]
+radial_segments = 8
+rings = 4
+
+[sub_resource type="StandardMaterial3D" id="flash_material"]
+shading_mode = 0
+albedo_color = Color(1, 0.75, 0.3, 1)
+
 [node name="Pistol" type="Node3D" node_paths=PackedStringArray("start_magazine")]
 script = ExtResource("1")
 cartridge = ExtResource("2")
@@ -106,6 +114,12 @@ script = ExtResource("5")
 
 [node name="Muzzle" type="Marker3D" parent="Frame"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.045, -0.128)
+
+[node name="Flash" type="MeshInstance3D" parent="Frame/Muzzle"]
+visible = false
+cast_shadow = 0
+mesh = SubResource("flash_mesh")
+surface_material_override/0 = SubResource("flash_material")
 
 [node name="MagWell" type="Area3D" parent="Frame"]
 transform = Transform3D(1, 0, 0, 0, 0.951057, 0.309017, 0, -0.309017, 0.951057, 0, 0.012, 0.0027)

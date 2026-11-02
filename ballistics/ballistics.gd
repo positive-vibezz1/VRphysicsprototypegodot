@@ -86,8 +86,10 @@ func on_bullet_hit(bullet: Bullet, position: Vector3, normal: Vector3, collider:
 		hole.visible = true
 
 
-func play_shot(position: Vector3, impulse: float) -> void:
-	_play(_bang, position, clampf(impulse / 6.0, 0.3, 1.0))
+## Louder with recoil and sharper with muzzle pressure: 5.56 cracks, 9 mm thumps.
+func play_shot(position: Vector3, shot: GasSim.Shot) -> void:
+	var pitch := clampf(sqrt(shot.muzzle_pressure / 6.0e7), 0.6, 1.5)
+	_play(_bang, position, clampf(shot.breech_impulse / 6.5, 0.3, 1.0), pitch)
 
 
 func play_click(position: Vector3) -> void:
@@ -104,12 +106,13 @@ func clear() -> void:
 		hole.visible = false
 
 
-func _play(stream: AudioStream, position: Vector3, volume: float) -> void:
+func _play(stream: AudioStream, position: Vector3, volume: float, pitch := 1.0) -> void:
 	var sound := _sounds[_next_sound]
 	_next_sound = (_next_sound + 1) % SOUND_COUNT
 	sound.stream = stream
 	sound.global_position = position
 	sound.volume_db = linear_to_db(volume)
+	sound.pitch_scale = pitch
 	sound.play()
 
 

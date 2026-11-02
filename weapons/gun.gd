@@ -8,15 +8,24 @@ extends Node3D
 
 signal shot_fired(shot: GasSim.Shot, strike_energy: float)
 signal misfired(strike_energy: float)
+## The bolt slammed into a stop, with this impulse in N s.
+signal bolt_stopped(impulse: float)
+## The frame touched something, at this speed in m/s.
+signal surface_hit(speed: float)
 
 enum Chamber { EMPTY, LIVE, SPENT }
 
 ## Bolt counts as locked in battery within this distance of its rest position.
 const BATTERY_TOLERANCE := 0.0015
+## A bolt stop below this is too soft to feel or hear.
+const FELT_STOP_IMPULSE := 0.15
 
 @export var cartridge: CartridgeSpec
 @export var start_chambered := true
 @export var start_magazine: Magazine
+## How a shot comes through the controller: a pistol is a short sharp snap, a rifle a longer deeper shove.
+@export var haptic_duration := 0.03
+@export var haptic_frequency := 180.0
 
 @export_group("Barrel")
 @export var barrel_length := 0.114
@@ -55,6 +64,7 @@ var catch_engaged := false
 @onready var muzzle: Node3D = $Frame/Muzzle
 @onready var ejection_port: Node3D = $Bolt/EjectionPort
 @onready var grip: GrabPoint = $Frame/Grip
+@onready var _flash: Node3D = $Frame/Muzzle/Flash
 
 var _rail: Rail
 var _handle_rail: Rail
@@ -62,6 +72,7 @@ var _shot := GasSim.Shot.new()
 var _rng := RandomNumberGenerator.new()
 var _past_eject := false
 var _past_feed := false
+var _short_of_catch := true
 var _support_points: Array[GrabPoint] = []
 
 
@@ -77,6 +88,9 @@ func _ready() -> void:
 				if child is GrabPoint and child != grip:
 					_support_points.append(child)
 					child.enabled = false
+	frame.contact_monitor = true
+	frame.max_contacts_reported = 2
+	frame.body_entered.connect(_on_frame_touched)
 	if start_magazine:
 		mag_well.seat(start_magazine)
 	if start_chambered:
@@ -87,6 +101,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if frame.sleeping and bolt.sleeping:
 		return
+	_flash.visible = false
 	mag_well.tick()
 	_rail.frame_mass = _supported_mass()
 	_rail.update()
@@ -99,12 +114,26 @@ func _physics_process(delta: float) -> void:
 		_strike(strike)
 
 	_rail.apply(delta)
+	if _rail.last_stop_impulse > FELT_STOP_IMPULSE:
+		bolt_stopped.emit(_rail.last_stop_impulse)
+		Ballistics.pool.play_click(frame.global_position)
 	if _handle_rail:
 		_handle_rail.apply(delta)
 
 
 func release_magazine() -> void:
 	mag_well.release()
+
+
+## The B/Y button: sends a locked back bolt home, otherwise moves the selector.
+func press_bolt_button() -> void:
+	if catch_engaged:
+		release_bolt()
+	elif fire_control.selector_modes.size() > 1:
+		fire_control.cycle_selector()
+	else:
+		return
+	Ballistics.pool.play_click(frame.global_position)
 
 
 func release_bolt() -> void:
@@ -183,10 +212,11 @@ func _update_cycle() -> void:
 			_rail.take_energy(feed_work)
 
 	# The follower of an empty magazine lifts the catch into the bolt's path.
-	if magazine and magazine.count == 0 and travel >= catch_travel and _rail.velocity > 0.0:
+	if magazine and magazine.count == 0 and travel >= catch_travel and _short_of_catch:
 		catch_engaged = true
 	elif catch_engaged and travel > catch_travel + 0.003 and not (magazine and magazine.count == 0):
 		catch_engaged = false
+	_short_of_catch = travel < catch_travel
 	_rail.set_front_stop(catch_travel if catch_engaged else 0.0)
 
 
@@ -216,8 +246,15 @@ func _strike(energy: float) -> void:
 		frame.apply_impulse(rear * _shot.breech_impulse * (1.0 - slide_share), bore_offset)
 
 	Ballistics.pool.fire_bullet(cartridge, muzzle.global_position, muzzle_velocity - rear * _shot.muzzle_velocity)
-	Ballistics.pool.play_shot(muzzle.global_position, _shot.breech_impulse)
+	Ballistics.pool.play_shot(muzzle.global_position, _shot)
+	# The muzzle blast grows with the pressure still behind the bullet when it leaves.
+	_flash.visible = true
+	_flash.scale = Vector3.ONE * 0.03 * sqrt(_shot.muzzle_pressure / 3.0e7)
 	shot_fired.emit(_shot, energy)
+
+
+func _on_frame_touched(_body: Node) -> void:
+	surface_hit.emit(frame.linear_velocity.length())
 
 
 func _eject() -> void:

@@ -91,10 +91,20 @@ size = Vector3(0.05, 0.012, 0.02)
 [sub_resource type="SphereShape3D" id="well_shape"]
 radius = 0.06
 
+[sub_resource type="SphereMesh" id="flash_mesh"]
+radial_segments = 8
+rings = 4
+
+[sub_resource type="StandardMaterial3D" id="flash_material"]
+shading_mode = 0
+albedo_color = Color(1, 0.75, 0.3, 1)
+
 [node name="AR" type="Node3D" node_paths=PackedStringArray("start_magazine")]
 script = ExtResource("1")
 cartridge = ExtResource("2")
 start_magazine = NodePath("Magazine")
+haptic_duration = 0.07
+haptic_frequency = 80.0
 barrel_length = 0.368
 barrel_mass = 0.0
 gas_port = SubResource("gas_port")
@@ -192,6 +202,19 @@ half_length = 0.12
 [node name="Muzzle" type="Marker3D" parent="Frame"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.055, -0.528)
 
+[node name="Flash" type="MeshInstance3D" parent="Frame/Muzzle"]
+visible = false
+cast_shadow = 0
+mesh = SubResource("flash_mesh")
+surface_material_override/0 = SubResource("flash_material")
+
+[node name="SelectorLabel" type="Label3D" parent="Frame"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.04, 0.1, 0.03)
+pixel_size = 0.0005
+text = "SEMI"
+font_size = 40
+outline_size = 8
+
 [node name="MagWell" type="Area3D" parent="Frame"]
 transform = Transform3D(1, 0, 0, 0, 0.990268, -0.139173, 0, 0.139173, 0.990268, 0, 0.02, -0.115)
 collision_layer = 0
@@ -280,12 +303,13 @@ angular_limit_x/enabled = false
 angular_limit_y/enabled = false
 angular_limit_z/enabled = false
 
-[node name="FireControl" type="Node" parent="." node_paths=PackedStringArray("trigger_visual", "selector_visual")]
+[node name="FireControl" type="Node" parent="." node_paths=PackedStringArray("trigger_visual", "selector_visual", "selector_label")]
 script = ExtResource("3")
 trigger_visual = NodePath("../Frame/TriggerPivot")
 selector_visual = NodePath("../Frame/SelectorPivot")
+selector_label = NodePath("../Frame/SelectorLabel")
+selector_modes = Array[int]([1, 2, 3, 0])
 break_force = 30.0
-has_auto = true
 hammer_inertia = 5.8e-06
 mainspring_preload = 1.1
 mainspring_rate = 0.5

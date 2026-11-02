@@ -6,7 +6,7 @@ extends Node
 ## cross its whole arc in one tick (omega * dt well above 2), so they are integrated here in sub-steps with
 ## the real spring torque, and the pin strike is the elastic collision of the hammer and the pin.
 
-enum Selector { SAFE, SEMI, AUTO }
+enum Selector { SAFE, SEMI, BURST, AUTO }
 enum Hammer { DOWN, SEAR, DISCONNECTOR, AUTO_SEAR, FALLING }
 
 ## 50 us: the hammer falls in about 2 to 4 ms, so about 60 steps per fall.
@@ -15,6 +15,11 @@ const SUB_STEP := 5.0e-5
 @export var hammer_visual: Node3D
 @export var trigger_visual: Node3D
 @export var selector_visual: Node3D
+@export var selector_label: Label3D
+## Positions the selector steps through, in order.
+@export var selector_modes: Array[Selector] = [Selector.SEMI]
+## Rounds per trigger pull on burst.
+@export var burst_count := 3
 
 @export_group("Trigger")
 ## Finger force below this does not move the trigger.
@@ -27,7 +32,6 @@ const SUB_STEP := 5.0e-5
 @export var reset_travel := 0.0025
 ## Pull weight at the sear: 25 N is about 5.5 lb.
 @export var break_force := 25.0
-@export var has_auto := false
 
 @export_group("Hammer")
 ## About 20 g at 18 mm from the pivot.
@@ -57,6 +61,12 @@ var trigger_pulled := false
 ## Energy the bolt spent pushing the hammer back during the last tick.
 var cock_work := 0.0
 
+var _burst_left := 0
+
+
+func _ready() -> void:
+	_show_selector()
+
 
 ## Advances one tick. Returns the pin energy at the primer if the pin struck this tick, otherwise -1.
 func tick(delta: float, finger_force: float, bolt_travel: float, in_battery: bool) -> float:
@@ -79,15 +89,8 @@ func cock_now() -> void:
 
 
 func cycle_selector() -> void:
-	match selector:
-		Selector.SAFE:
-			selector = Selector.SEMI
-		Selector.SEMI:
-			selector = Selector.AUTO if has_auto else Selector.SAFE
-		Selector.AUTO:
-			selector = Selector.SAFE
-	if selector_visual:
-		selector_visual.rotation.x = deg_to_rad(float(selector) * 60.0)
+	selector = selector_modes[(selector_modes.find(selector) + 1) % selector_modes.size()]
+	_show_selector()
 
 
 ## Energy stored in the mainspring at a hammer angle, above the hammer down position.
@@ -114,7 +117,7 @@ func _cock(bolt_travel: float) -> void:
 		if cam >= cocked_angle:
 			if not trigger_pulled:
 				hammer_state = Hammer.SEAR
-			elif selector == Selector.AUTO:
+			elif selector == Selector.AUTO or (selector == Selector.BURST and _burst_left > 0):
 				hammer_state = Hammer.AUTO_SEAR
 			else:
 				hammer_state = Hammer.DISCONNECTOR
@@ -130,6 +133,7 @@ func _update_trigger(finger_force: float, in_battery: bool) -> void:
 	var travel := clampf((finger_force - trigger_preload) / trigger_rate, 0.0, travel_limit)
 	if not safe and hammer_state == Hammer.SEAR and finger_force >= break_force:
 		hammer_state = Hammer.FALLING
+		_burst_left = burst_count - 1
 		travel = total_travel
 	trigger_travel = travel
 	if travel > take_up_travel:
@@ -146,6 +150,14 @@ func _update_trigger(finger_force: float, in_battery: bool) -> void:
 				hammer_state = Hammer.SEAR
 			elif in_battery:
 				hammer_state = Hammer.FALLING
+				_burst_left -= 1
+
+
+func _show_selector() -> void:
+	if selector_visual:
+		selector_visual.rotation.x = deg_to_rad(float(selector) * 45.0)
+	if selector_label:
+		selector_label.text = Selector.keys()[selector]
 
 
 func _fall(delta: float, bolt_travel: float, in_battery: bool) -> float:

@@ -89,7 +89,6 @@ func test_semi_needs_a_trigger_reset() -> void:
 
 
 func test_auto_fires_when_the_bolt_returns() -> void:
-	_fc.has_auto = true
 	_fc.selector = FireControl.Selector.AUTO
 	_fc.cock_now()
 	_run(2, 45.0)
@@ -97,6 +96,36 @@ func test_auto_fires_when_the_bolt_returns() -> void:
 	assert_eq(_fc.hammer_state, FireControl.Hammer.AUTO_SEAR)
 	assert_eq(_fc.tick(DT, 45.0, 0.02, false), -1.0, "bolt still out of battery")
 	assert_gt(_run(2, 45.0), 0.0, "fires in battery")
+
+
+func test_burst_stops_after_its_count_until_the_trigger_resets() -> void:
+	_fc.selector = FireControl.Selector.BURST
+	_fc.cock_now()
+	var strikes := 0
+	# The bolt cycles between shots with the trigger held all the way through.
+	for shot: int in 6:
+		if _run(2, 45.0) > 0.0:
+			strikes += 1
+		_fc.tick(DT, 45.0, _fc.cock_travel, false)
+	assert_eq(strikes, _fc.burst_count)
+	assert_eq(_fc.hammer_state, FireControl.Hammer.DISCONNECTOR)
+	_run(1, 0.0)
+	assert_eq(_fc.hammer_state, FireControl.Hammer.SEAR, "reset")
+	assert_gt(_run(2, 45.0), 0.0, "next pull starts a new burst")
+
+
+func test_selector_steps_through_its_modes() -> void:
+	_fc.selector_modes = [
+		FireControl.Selector.SEMI, FireControl.Selector.BURST, FireControl.Selector.AUTO, FireControl.Selector.SAFE
+	]
+	_fc.cycle_selector()
+	assert_eq(_fc.selector, FireControl.Selector.BURST)
+	_fc.cycle_selector()
+	assert_eq(_fc.selector, FireControl.Selector.AUTO)
+	_fc.cycle_selector()
+	assert_eq(_fc.selector, FireControl.Selector.SAFE)
+	_fc.cycle_selector()
+	assert_eq(_fc.selector, FireControl.Selector.SEMI)
 
 
 func test_out_of_battery_does_not_strike() -> void:

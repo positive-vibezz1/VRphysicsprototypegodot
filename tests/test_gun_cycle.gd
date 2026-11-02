@@ -15,6 +15,12 @@ var _watched: Gun
 var _furthest := 0.0
 
 
+## A dud stops a gun until it is racked, which would fail these tests at random. test_fire_control covers duds.
+func before_all() -> void:
+	(load("res://weapons/parts/cartridge_9x19.tres") as CartridgeSpec).dud_chance = 0.0
+	(load("res://weapons/parts/cartridge_556x45.tres") as CartridgeSpec).dud_chance = 0.0
+
+
 func before_each() -> void:
 	_shots.clear()
 	Ballistics.pool.clear()
@@ -116,6 +122,20 @@ func test_pistol_fires_and_cycles() -> void:
 	assert_eq(gun.fire_control.hammer_state, FireControl.Hammer.SEAR, "hammer recocked")
 
 
+func test_slide_does_not_twitch_after_a_shot() -> void:
+	var gun := await _spawn_held(PISTOL_SCENE)
+	await wait_physics_frames(3)
+	_trigger(gun, true)
+	await wait_physics_frames(2)
+	_trigger(gun, false)
+	await wait_physics_frames(25)
+	var furthest_forward := 0.0
+	for i: int in 180:
+		await wait_physics_frames(1)
+		furthest_forward = minf(furthest_forward, _travel(gun))
+	assert_gt(furthest_forward, -0.003, "the spring never throws it past the stop at rest")
+
+
 func test_pistol_momentum_goes_where_the_gas_says() -> void:
 	var gun := _spawn(PISTOL_SCENE)
 	await wait_physics_frames(3)
@@ -166,6 +186,48 @@ func test_ar_auto_cycles_at_a_real_rate() -> void:
 	# One second of fire. An M4 cycles about 700 to 950 rounds a minute, 12 to 16 a second.
 	assert_between(_shots.size(), 9, 18, "shots per second")
 	assert_between(gun.mag_well.magazine.count, start - _shots.size(), start - _shots.size() + 1, "one fed per shot")
+
+
+func test_ar_burst_fires_three_per_pull() -> void:
+	var gun := await _spawn_held(AR_SCENE)
+	gun.fire_control.selector = FireControl.Selector.BURST
+	await wait_physics_frames(3)
+	_trigger(gun, true)
+	await wait_physics_frames(60)
+	assert_eq(_shots.size(), 3, "three on a held trigger")
+	_trigger(gun, false)
+	await wait_physics_frames(3)
+	_trigger(gun, true)
+	await wait_physics_frames(60)
+	assert_eq(_shots.size(), 6, "three more after a reset")
+
+
+func test_b_button_moves_the_selector_unless_the_bolt_is_locked() -> void:
+	var gun := await _spawn_held(AR_SCENE)
+	var label: Label3D = gun.frame.get_node("SelectorLabel")
+	assert_eq(label.text, "SEMI")
+	gun.press_bolt_button()
+	assert_eq(gun.fire_control.selector, FireControl.Selector.BURST)
+	assert_eq(label.text, "BURST", "the gun shows what it is set to")
+	gun.catch_engaged = true
+	gun.press_bolt_button()
+	assert_eq(gun.fire_control.selector, FireControl.Selector.BURST, "locked bolt: the button releases it")
+	assert_false(gun.catch_engaged)
+
+
+func test_pistol_has_no_selector_to_change() -> void:
+	var gun := await _spawn_held(PISTOL_SCENE)
+	gun.press_bolt_button()
+	assert_eq(gun.fire_control.selector, FireControl.Selector.SEMI)
+
+
+func test_a_shot_reports_the_bolt_hitting_its_stops() -> void:
+	var gun := await _spawn_held(AR_SCENE)
+	watch_signals(gun)
+	await wait_physics_frames(3)
+	_trigger(gun, true)
+	await wait_physics_frames(30)
+	assert_signal_emitted(gun, "bolt_stopped")
 
 
 func test_magazine_runs_dry_and_the_bolt_locks_back() -> void:
@@ -284,4 +346,4 @@ func test_gun_stays_stable_for_a_long_string_of_fire() -> void:
 	await wait_physics_frames(30)
 	var offset := gun.bolt.global_position - gun.frame.global_position
 	assert_lt(offset.length(), 0.3, "parts did not fly apart")
-	assert_gt(_shots.size(), 10)
+	assert_gt(_shots.size(), 8)

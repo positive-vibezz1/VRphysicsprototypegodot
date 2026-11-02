@@ -7,8 +7,11 @@ extends RefCounted
 ## approach is slowed here to land on the stop, as equal and opposite impulses on the bolt and the frame. The
 ## momentum goes into the frame at the rail either way, and that is what makes the frame kick.
 
-## Closer than this to a stop, the joint limit handles the contact alone.
-const STOP_MARGIN := 0.0005
+## Slower than this into a stop is a part resting on it, not an impact.
+const IMPACT_SPEED := 0.3
+const SETTLE_GAP := 0.001
+## Jolt measures travel a hair differently, so stops are predicted this far past them too.
+const STOP_BAND := 0.0005
 
 var frame: RigidBody3D
 var body: RigidBody3D
@@ -19,11 +22,14 @@ var preload_force := 0.0
 var rate := 0.0
 var front_stop := 0.0
 var rear_stop := 0.0
+## Impulse of the stop this part ran into during the last tick, for haptics and sound.
+var last_stop_impulse := 0.0
 ## Rearward travel from the rest position, and its speed relative to the frame.
 var travel := 0.0
 var velocity := 0.0
 
 var _rest_z := 0.0
+var _previous_travel := 0.0
 
 
 func _init(
@@ -65,14 +71,27 @@ func apply(delta: float) -> void:
 	var offset := body.global_position - frame.global_position
 	var force := preload_force + rate * travel
 	var inverse_mass := 1.0 / body.mass + 1.0 / frame_mass
-	var coasting := velocity - force * inverse_mass * delta
+	# The part's own weight along the rail counts too, or a gun pointing up would hold its bolt out of battery.
+	var weight := body.get_gravity().dot(axis) * body.gravity_scale
+	var coasting := velocity + (weight - force * inverse_mass) * delta
 	var next := travel + coasting * delta
 
 	var wanted := coasting
-	if next > rear_stop and travel < rear_stop - STOP_MARGIN:
-		wanted = (rear_stop - travel) / delta
-	elif next < front_stop and travel > front_stop + STOP_MARGIN:
-		wanted = (front_stop - travel) / delta
+	# Past a stop the joint limit is active and handles it alone. Short of one the limit is off, so even a part
+	# a hair off its stop needs this, or the spring throws it through the stop for a whole tick.
+	if next > rear_stop and travel < rear_stop + STOP_BAND:
+		wanted = _landing_speed(maxf(rear_stop - travel, 0.0), delta)
+	elif next < front_stop and travel > front_stop - STOP_BAND:
+		wanted = _landing_speed(minf(front_stop - travel, 0.0), delta)
+
+	last_stop_impulse = 0.0
+	if absf(velocity) > IMPACT_SPEED:
+		if wanted != coasting:
+			last_stop_impulse = absf(velocity - wanted) / inverse_mass
+		elif (travel >= rear_stop and _previous_travel < rear_stop) or (travel <= front_stop and _previous_travel > front_stop):
+			# Came in faster than predicted and the joint limit caught it.
+			last_stop_impulse = absf(velocity) / inverse_mass
+	_previous_travel = travel
 	if wanted != coasting:
 		var impulse := axis * (wanted - coasting) / inverse_mass
 		body.apply_central_impulse(impulse)
@@ -80,6 +99,14 @@ func apply(delta: float) -> void:
 
 	body.apply_central_force(-axis * force)
 	frame.apply_force(axis * force, offset)
+
+
+## Speed that covers a gap to a stop in one tick. The last millimeter closes at half that: the frame's real
+## inertia isn't known exactly here, and a full correction every tick would buzz.
+func _landing_speed(gap: float, delta: float) -> float:
+	if absf(gap) < SETTLE_GAP and absf(velocity) < IMPACT_SPEED:
+		return 0.5 * gap / delta
+	return gap / delta
 
 
 ## Removes energy from the moving part, such as cocking the hammer or stripping a round. The reaction goes
