@@ -24,6 +24,8 @@ Git Bash: `GODOT="/d/godot/Godot_v4.7.2-stable_win64_console.exe"`. PowerShell: 
 | Check one script for parse errors | `$GODOT --headless --xr-mode off --path . --check-only --script res://path/to/file.gd` |
 | Run all tests | `$GODOT --headless --xr-mode off --fixed-fps 90 --max-fps 900 --path . -s res://addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit` |
 | Run the game (SteamVR must be running) | `$GODOT --path .` |
+| Rebuild gun models after editing `tools/build_gun_models.gd` (opens a window) | `$GODOT --xr-mode off --path . -s res://tools/build_gun_models.gd` |
+| Render the guns to PNGs to check how they look (opens a window) | `$GODOT --xr-mode off --resolution 1600x1000 --path . -s res://tools/render_guns.gd -- <absolute out dir> [open] [zoom=x,y,z,width]` |
 
 Always pass `--xr-mode off` to headless runs: without it Godot starts SteamVR and hangs.
 
@@ -46,6 +48,7 @@ weapons/
 ballistics/      gas pressure model, bullets, casings, impacts
 sandbox/         test range (main scene)
 tests/           GUT tests, test_<thing>.gd
+tools/           model builder and gun render tool, not used in the game
 addons/          GUT and third-party plugins only
 ```
 

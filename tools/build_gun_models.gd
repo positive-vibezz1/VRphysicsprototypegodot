@@ -51,11 +51,11 @@ func _initialize() -> void:
 func _pistol_frame() -> void:
 	# Upper frame with a full length dust cover and a swept beavertail.
 	_solid([
-		_side(graphite, [-0.128, 0.0295, 0.068, 0.0295, 0.084, 0.0278, 0.098, 0.0195, 0.098, 0.0165, 0.085, 0.0135,
+		_side(graphite, [-0.128, 0.0295, 0.068, 0.0295, 0.082, 0.0278, 0.091, 0.0205, 0.091, 0.0175, 0.08, 0.0135,
 				0.06, 0.0115, 0.03, 0.008, -0.118, 0.008, -0.128, 0.0135], -0.02, 0.02),
 		_front(graphite, [-0.0125, 0.0296, 0.0125, 0.0296, 0.0125, 0.0125, 0.0085, 0.0075, -0.0085, 0.0075,
 				-0.0125, 0.0125], -0.13, 0.1),
-		_top(graphite, [-0.0125, -0.13, 0.0125, -0.13, 0.0125, 0.07, 0.0075, 0.1, -0.0075, 0.1, -0.0125, 0.07],
+		_top(graphite, [-0.0125, -0.13, 0.0125, -0.13, 0.0125, 0.068, 0.0075, 0.093, -0.0075, 0.093, -0.0125, 0.068],
 				0.0, 0.04),
 	])
 	# Skeleton dust cover: the recoil spring and guide rod show through it, and a tab on the slide rides inside.
@@ -88,6 +88,8 @@ func _pistol_frame() -> void:
 			_side(accent, [-0.0225, -0.041, 0.0225, -0.041, 0.0225, -0.0485, -0.0225, -0.0485], -0.02, 0.02),
 			_top(accent, grip_section, -0.06, 0.06),
 		])
+		# Shell backstrap, tying the grip to the slide's colour.
+		_add(_side(shell, [0.0163, 0.05, 0.0197, 0.05, 0.0212, 0.0, 0.0212, -0.041, 0.0172, -0.041, 0.0163, 0.0], -0.0085, 0.0085))
 		for side: float in [-1.0, 1.0]:
 			# Rubber side panels with raised ribs.
 			_carve(_box(graphite, Vector3(side * 0.0148, -0.006, 0.001), Vector3(0.0016, 0.062, 0.027)))
@@ -171,6 +173,7 @@ func _pistol_slide() -> void:
 	_carve(_box(graphite, Vector3(0, 0.0655, 0.0555), Vector3(0.0038, 0.006, 0.008)))
 	for side: float in [-1.0, 1.0]:
 		_add(_cyl(glow, Vector3(side * 0.0052, 0.0635, 0.0592), 0.0012, 0.0012, Vector3.AXIS_Z, 8))
+		_add(_box(glow, Vector3(side * 0.01405, 0.0338, -0.078), Vector3(0.0005, 0.0012, 0.044)))
 	_add(_box(graphite, Vector3(0, 0.0612, 0.03), Vector3(0.0065, 0.0016, 0.042)))
 	# Screen plate on the back of the slide, above the hammer.
 	_add(_box(rubber, Vector3(0, 0.0522, 0.0654), Vector3(0.0165, 0.0115, 0.0012)))
@@ -264,6 +267,7 @@ func _ar_lower() -> void:
 			_side(accent, [-0.0245, -0.038, 0.0235, -0.038, 0.0235, -0.045, -0.0245, -0.045], -0.02, 0.02),
 			_top(accent, grip_section, -0.06, 0.06),
 		])
+		_add(_side(shell, [0.0172, 0.05, 0.0212, 0.05, 0.0212, -0.038, 0.0172, -0.038], -0.0085, 0.0085))
 		for side: float in [-1.0, 1.0]:
 			_carve(_box(graphite, Vector3(side * 0.0145, -0.01, 0.001), Vector3(0.0016, 0.05, 0.027)))
 			_add(_box(rubber, Vector3(side * 0.0135, -0.01, 0.001), Vector3(0.0012, 0.0495, 0.0265)))
@@ -274,7 +278,13 @@ func _ar_lower() -> void:
 	_group(Transform3D(RAKE_8, Vector3(0, 0.02, -0.115)), func() -> void:
 		_carve(_box(graphite, Vector3(0, -0.03, 0), Vector3(0.0256, 0.09, 0.0636)))
 	)
-	# Controls and pins.
+	# Slanted grooves on the mag well, a glowing line under the port, then controls and pins.
+	for side: float in [-1.0, 1.0]:
+		for i: int in 4:
+			var groove: CSGShape3D = _box(accent, Vector3(side * 0.0155, -0.0065, -0.148 + i * 0.017), Vector3(0.0022, 0.018, 0.0032))
+			groove.rotation_degrees.x = 12.0
+			_carve(groove)
+		_add(_box(glow, Vector3(side * 0.0157, 0.0415, -0.11), Vector3(0.0005, 0.0012, 0.13)))
 	_add(_box(accent, Vector3(0.0162, 0.02, -0.078), Vector3(0.0032, 0.0085, 0.009)))
 	_add(_box(steel, Vector3(-0.0162, 0.0245, -0.077), Vector3(0.0024, 0.019, 0.011)))
 	_add(_cyl(steel, Vector3(0, 0.028, -0.172), 0.0028, 0.0335, Vector3.AXIS_X, 8))
@@ -320,6 +330,8 @@ func _ar_handguard() -> void:
 	# Rubber pads along the bottom, where the support hand goes.
 	for i: int in 9:
 		_add(_box(rubber, Vector3(0, 0.0303, -0.408 + i * 0.024), Vector3(0.0215, 0.0018, 0.017)))
+	for side: float in [-1.0, 1.0]:
+		_add(_box(glow, Vector3(side * 0.0201, 0.0556, -0.305), Vector3(0.0005, 0.0013, 0.21)))
 	# An orange collar where the shroud meets the receiver.
 	_add(_front(accent, [-0.0205, 0.0556, -0.0205, 0.0665, -0.0115, 0.0805, 0.0115, 0.0805, 0.0205, 0.0665, 0.0205, 0.046,
 			0.0115, 0.0298, -0.0115, 0.0298, -0.0205, 0.046], -0.194, -0.188))
@@ -353,12 +365,20 @@ func _ar_barrel() -> void:
 
 func _ar_sights() -> void:
 	# Two tall fins, each a ring with a sight line 55 mm above the bore: a glowing post in front, ticks at the rear.
-	_add(_side(shell, [-0.432, 0.079, -0.398, 0.079, -0.404, 0.122, -0.424, 0.124], -0.012, 0.012))
+	_solid([
+		_side(shell, [-0.432, 0.079, -0.398, 0.079, -0.404, 0.122, -0.424, 0.124], -0.02, 0.02),
+		_front(shell, [-0.012, 0.078, 0.012, 0.078, 0.012, 0.119, 0.0075, 0.125, -0.0075, 0.125, -0.012, 0.119], -0.44, -0.39),
+		_top(shell, [-0.0075, -0.432, 0.0075, -0.432, 0.012, -0.418, 0.012, -0.398, -0.012, -0.398, -0.012, -0.418], 0.07, 0.13),
+	])
 	_carve(_cyl(accent, Vector3(0, 0.11, -0.415), 0.0082, 0.05, Vector3.AXIS_Z, 16))
 	_add(_box(graphite, Vector3(0, 0.1045, -0.415), Vector3(0.0024, 0.0112, 0.0024)))
 	_add(_box(glow, Vector3(0, 0.1098, -0.415), Vector3(0.0032, 0.0032, 0.0032)))
 
-	_add(_side(shell, [-0.08, 0.081, -0.045, 0.081, -0.045, 0.124, -0.064, 0.124], -0.0145, 0.0145))
+	_solid([
+		_side(shell, [-0.08, 0.081, -0.045, 0.081, -0.045, 0.1245, -0.064, 0.1245], -0.02, 0.02),
+		_front(shell, [-0.0145, 0.08, 0.0145, 0.08, 0.0145, 0.118, 0.009, 0.1245, -0.009, 0.1245, -0.0145, 0.118], -0.09, -0.04),
+		_top(shell, [-0.0085, -0.08, 0.0085, -0.08, 0.0145, -0.06, 0.0145, -0.045, -0.0145, -0.045, -0.0145, -0.06], 0.07, 0.13),
+	])
 	_carve(_cyl(accent, Vector3(0, 0.11, -0.06), 0.0088, 0.05, Vector3.AXIS_Z, 16))
 	_add(_box(glow, Vector3(-0.0088, 0.11, -0.0448), Vector3(0.0036, 0.0013, 0.0008)))
 	_add(_box(glow, Vector3(0.0088, 0.11, -0.0448), Vector3(0.0036, 0.0013, 0.0008)))
