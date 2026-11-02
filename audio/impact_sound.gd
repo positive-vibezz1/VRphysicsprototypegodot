@@ -56,7 +56,10 @@ func _physics_process(_delta: float) -> void:
 	var energy := 0.5 * impulse * strike * strike / closing
 	var point := state.get_contact_local_position(strongest)
 	var other := collider as RigidBody3D
-	Sounds.pool.impact(point, surface, energy * other.mass / (other.mass + _body.mass) if other else energy, strike, _body.mass)
+	Sounds.pool.impact(
+		point, surface, energy * other.mass / (other.mass + _body.mass) if other else energy, strike, _body.mass,
+		Sounds.surface_of(collider), other.mass if other else 0.0
+	)
 	if not other:
-		Sounds.pool.impact_on(collider, point, energy, strike, _body.mass)
+		Sounds.pool.impact_on(collider, point, energy, strike, _body.mass, surface)
 	_next_frame = Engine.get_physics_frames() + int(SHORTEST_GAP * Engine.physics_ticks_per_second)

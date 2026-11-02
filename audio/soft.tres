@@ -11,3 +11,6 @@ soft_contact = 0.004
 hard_contact = 0.0015
 noise_level = 0.25
 noise_decay = 0.008
+density = 1100.0
+stiffness = 1.0e+07
+absorption = 0.5

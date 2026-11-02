@@ -10,6 +10,12 @@ const TIME_CONSTANTS := 6.9
 ## Pitch goes as size for the same shape, so as the cube root of mass. Past these a stretched sound stops sounding real.
 const LOWEST_PITCH := 0.5
 const HIGHEST_PITCH := 2.5
+## Radius of what touches in a hit, about a corner or an edge, in m.
+const CONTACT_RADIUS := 0.01
+## 1 - v^2 for a Poisson's ratio v of about 0.3, which most solids are near.
+const POISSON_TERM := 0.91
+## Most highs a voice's filter is asked to take off a take, in dB, for a contact much longer than the take's.
+const MOST_DULLING := 40.0
 
 ## Each mode is x frequency in Hz, y decay per second, z level.
 @export var modes: PackedVector3Array
@@ -23,10 +29,39 @@ const HIGHEST_PITCH := 2.5
 ## The scrape of the contact itself: white noise through the same filter.
 @export var noise_level := 0.3
 @export var noise_decay := 0.003
+## kg/m3. What a wall of it weighs, and how much a surrounding liquid weighs it down.
+@export var density := 2400.0
+## Young's modulus in Pa. How stiff it is, which sets how long a hit stays in contact.
+@export var stiffness := 3.0e10
+## Share of the sound hitting it that doesn't come back.
+@export var absorption := 0.02
 
 
-func pitch_for(mass: float) -> float:
-	return 1.0 if mass <= 0.0 else clampf(pow(reference_mass / mass, 1.0 / 3.0), LOWEST_PITCH, HIGHEST_PITCH)
+## How long two things stay in contact when they hit, by Hertz. Stiffer, lighter and faster all make it shorter.
+static func contact_time(a: SurfaceSound, b: SurfaceSound, mass: float, speed: float) -> float:
+	var combined := 1.0 / (POISSON_TERM / a.stiffness + POISSON_TERM / b.stiffness)
+	return 2.87 * pow(mass * mass / (CONTACT_RADIUS * combined * combined * maxf(speed, 0.01)), 0.2)
+
+
+## A dense medium loads what's ringing in it with its own weight, which lowers the pitch. Nothing you'd notice in air.
+func pitch_for(mass: float, around_density := 0.0) -> float:
+	var size := 1.0 if mass <= 0.0 else clampf(pow(reference_mass / mass, 1.0 / 3.0), LOWEST_PITCH, HIGHEST_PITCH)
+	return size / sqrt(1.0 + around_density / density)
+
+
+## Whether a contact this long is nearer the hard take than the soft one.
+func is_hard(contact: float) -> bool:
+	return contact < sqrt(hard_contact * soft_contact)
+
+
+## How much the highs of the nearest take must lose to sound like a contact this long, in dB at this frequency.
+func dulling(contact: float, frequency: float) -> float:
+	var baked := hard_contact if is_hard(contact) else soft_contact
+	return minf(maxf(_contact_loss(contact, frequency) - _contact_loss(baked, frequency), 0.0), MOST_DULLING)
+
+
+static func _contact_loss(contact: float, frequency: float) -> float:
+	return linear_to_db(1.0 + pow(frequency * contact, 2.0))
 
 
 func bake(hard: bool, rng: RandomNumberGenerator) -> AudioStreamWAV:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=31 format=3]
+[gd_scene load_steps=36 format=3]
 
 [ext_resource type="Script" path="res://sandbox/range.gd" id="1"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="2"]
@@ -12,6 +12,9 @@
 [ext_resource type="PackedScene" path="res://sandbox/dummy.tscn" id="10"]
 [ext_resource type="PackedScene" path="res://sandbox/block_course.tscn" id="11"]
 [ext_resource type="Script" path="res://audio/impact_sound.gd" id="impact_sound"]
+[ext_resource type="Script" path="res://audio/medium_volume.gd" id="medium_volume"]
+[ext_resource type="Resource" path="res://audio/water_medium.tres" id="water_medium"]
+[ext_resource type="Resource" path="res://audio/thin_air_medium.tres" id="thin_air_medium"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_material"]
 
@@ -78,6 +81,18 @@ bottom_radius = 0.033
 height = 0.12
 radial_segments = 12
 rings = 1
+
+[sub_resource type="StandardMaterial3D" id="water_material"]
+transparency = 1
+cull_mode = 2
+shading_mode = 0
+albedo_color = Color(0.15, 0.45, 0.8, 0.35)
+
+[sub_resource type="StandardMaterial3D" id="thin_air_material"]
+transparency = 1
+cull_mode = 2
+shading_mode = 0
+albedo_color = Color(1, 0.75, 0.55, 0.12)
 
 [node name="Range" type="Node3D"]
 script = ExtResource("1")
@@ -270,3 +285,33 @@ script = ExtResource("impact_sound")
 
 [node name="ImpactSound" type="Node" parent="Can2"]
 script = ExtResource("impact_sound")
+
+[node name="Water" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.5, 1.25, 0)
+script = ExtResource("medium_volume")
+medium = ExtResource("water_medium")
+size = Vector3(3, 2.5, 3)
+material = SubResource("water_material")
+
+[node name="Label" type="Label3D" parent="Water"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+billboard = 1
+pixel_size = 0.002
+text = "WATER"
+font_size = 64
+outline_size = 12
+
+[node name="ThinAir" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5, 1.25, 0)
+script = ExtResource("medium_volume")
+medium = ExtResource("thin_air_medium")
+size = Vector3(3, 2.5, 3)
+material = SubResource("thin_air_material")
+
+[node name="Label" type="Label3D" parent="ThinAir"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+billboard = 1
+pixel_size = 0.002
+text = "THIN AIR"
+font_size = 64
+outline_size = 12

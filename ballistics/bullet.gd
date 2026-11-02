@@ -16,6 +16,7 @@ var _age := 0.0
 var _arriving_velocity := Vector3.ZERO
 var _launched_from := Vector3.ZERO
 var _launch_direction := Vector3.ZERO
+var _in_liquid := false
 
 @onready var _tracer: Node3D = $Tracer
 
@@ -31,6 +32,7 @@ func launch(cartridge: CartridgeSpec, from: Vector3, velocity: Vector3) -> void:
 	mass = cartridge.bullet_mass
 	_drag_factor = 0.5 * AIR_DENSITY * cartridge.drag_coefficient * cartridge.bore_area() / cartridge.bullet_mass
 	_age = 0.0
+	_in_liquid = false
 	_launched_from = from
 	_launch_direction = velocity.normalized()
 	var up := Vector3.UP if absf(velocity.normalized().y) < 0.99 else Vector3.RIGHT
@@ -63,6 +65,19 @@ func _show_tracer(speed: float) -> void:
 	_tracer.scale = Vector3(width, width, length)
 
 
+## At 10 m a tick a bullet could cross a whole box of water between ticks, so this goes by its path and not a point.
+func _splash(from: Vector3, to: Vector3, speed: float) -> void:
+	var was_in_liquid := _in_liquid
+	_in_liquid = false
+	for volume: MediumVolume in MediumVolume.all:
+		if volume.medium.is_liquid and volume.path_length(from, to) > 0.0:
+			_in_liquid = true
+			if not was_in_liquid:
+				Sounds.pool.impact_on.call_deferred(
+					volume, volume.entry_point(from, to), 0.5 * mass * speed * speed, speed, mass, Sounds.Surface.METAL
+				)
+
+
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	if state.get_contact_count() > 0:
 		# The contact is already solved here, so what it took out of the bullet is what it gave the target.
@@ -85,6 +100,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		return
 	var velocity := state.linear_velocity
 	var speed := velocity.length()
+	_splash(state.transform.origin, state.transform.origin + velocity * state.step, speed)
 	if speed > 0.0:
 		state.linear_velocity = velocity * drag_speed(speed, _drag_factor, state.step) / speed
 	_arriving_velocity = state.linear_velocity

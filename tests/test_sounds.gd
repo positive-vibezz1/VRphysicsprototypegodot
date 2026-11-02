@@ -23,9 +23,8 @@ func _on_played(surface: Sounds.Surface, energy: float, volume: float, pitch: fl
 
 ## Frees the voices and lifts the hush, whatever an earlier test left.
 func _silence() -> void:
+	Sounds.pool.hush()
 	Sounds.pool._quiet_until = 0
-	for voice: Node in Sounds.pool.get_children():
-		(voice as AudioStreamPlayer3D).stop()
 
 
 func _floor(surface := Sounds.Surface.CONCRETE) -> StaticBody3D:

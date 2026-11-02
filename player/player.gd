@@ -273,7 +273,8 @@ func _step(delta: float) -> void:
 
 
 func _foot_down(foot: float, speed: float) -> void:
-	Sounds.pool.soft_hit(_floor_point, foot, speed, _feet.get_collider())
+	var water := MediumVolume.liquid_at(_floor_point)
+	Sounds.pool.soft_hit(_floor_point, foot, speed, water if water else _feet.get_collider())
 
 
 ## Legs come back out only once there's room for them under the torso, or they would appear inside a ledge.

@@ -120,7 +120,7 @@ func _physics_process(delta: float) -> void:
 	if _rail.last_stop_impulse > FELT_STOP_IMPULSE:
 		bolt_stopped.emit(_rail.last_stop_impulse)
 		var stop_speed := _rail.last_stop_impulse / bolt.mass
-		Sounds.pool.impact(frame.global_position, Sounds.Surface.METAL, 0.5 * _rail.last_stop_impulse * stop_speed, stop_speed, bolt.mass)
+		Sounds.pool.impact(frame.global_position, Sounds.Surface.METAL, 0.5 * _rail.last_stop_impulse * stop_speed, stop_speed, bolt.mass, Sounds.Surface.METAL, frame.mass)
 	if _handle_rail:
 		_handle_rail.apply(delta)
 

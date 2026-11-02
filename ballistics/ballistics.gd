@@ -73,7 +73,7 @@ func eject_casing(
 
 func on_bullet_hit(bullet: Bullet, position: Vector3, normal: Vector3, collider: Object, energy: float) -> void:
 	bullet.park()
-	Sounds.pool.impact_on(collider, position, energy, sqrt(2.0 * maxf(energy, 0.0) / bullet.mass), bullet.mass)
+	Sounds.pool.impact_on(collider, position, energy, sqrt(2.0 * maxf(energy, 0.0) / bullet.mass), bullet.mass, Sounds.Surface.METAL)
 	bullet_hit.emit(collider, energy)
 	# Moving targets would leave the hole floating, so only the static world keeps them.
 	if collider is StaticBody3D and normal.length_squared() > 0.5:
