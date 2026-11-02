@@ -218,7 +218,7 @@ func test_every_body_that_can_hit_something_rings_and_the_table_is_wood() -> voi
 	assert_eq((_range.get_node("Berm") as Node).get_meta(&"surface"), Sounds.Surface.SOFT)
 	assert_eq((_range.get_node("Crate1") as Node).get_meta(&"surface"), Sounds.Surface.WOOD)
 	assert_eq((_range.get_node("Can1") as Node).get_meta(&"surface"), Sounds.Surface.METAL)
-	assert_eq((_range.get_node("Pistol/Frame") as Node).get_meta(&"surface"), Sounds.Surface.METAL)
+	assert_eq((_range.get_node("Pistol/Frame") as Node).get_meta(&"surface"), Sounds.Surface.GUN)
 	assert_eq((_range.get_node("Parkour/Rung1") as Node).get_meta(&"surface"), Sounds.Surface.METAL)
 	assert_false((_range.get_node("Floor") as Node).has_meta(&"surface"), "concrete is the default")
 
@@ -233,5 +233,5 @@ func test_a_gun_dropped_on_the_table_rings_both() -> void:
 	pistol.teleport(Transform3D(Basis.IDENTITY, Vector3(0, 0.4, 0)))
 	await wait_physics_frames(45)
 	Sounds.pool.played.disconnect(listener)
-	assert_has(surfaces, Sounds.Surface.METAL)
+	assert_has(surfaces, Sounds.Surface.GUN)
 	assert_has(surfaces, Sounds.Surface.WOOD)

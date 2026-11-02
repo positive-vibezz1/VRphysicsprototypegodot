@@ -19,6 +19,8 @@ enum Chamber { EMPTY, LIVE, SPENT }
 const BATTERY_TOLERANCE := 0.0015
 ## A bolt stop below this is too soft to feel or hear.
 const FELT_STOP_IMPULSE := 0.15
+## Most of a bolt's energy goes into the frame and the hand. Very little of it gets into the air from a gun this rigid.
+const STOP_SOUND_SHARE := 0.03
 
 @export var cartridge: CartridgeSpec
 @export var start_chambered := true
@@ -75,10 +77,12 @@ var _past_feed := false
 var _short_of_catch := true
 var _support_points: Array[GrabPoint] = []
 var _report := ShotReport.new()
+var _bang: GunshotSound
 
 
 func _ready() -> void:
 	_rng.randomize()
+	_bang = GunshotSound.of(cartridge, barrel_length, gas_port, bolt.mass)
 	_rail = Rail.new(frame, bolt, $Rail, bolt_travel, spring_preload, spring_rate)
 	if charging_handle:
 		# Just enough spring to bring the handle home. The joint to the bolt does the rest.
@@ -120,7 +124,8 @@ func _physics_process(delta: float) -> void:
 	if _rail.last_stop_impulse > FELT_STOP_IMPULSE:
 		bolt_stopped.emit(_rail.last_stop_impulse)
 		var stop_speed := _rail.last_stop_impulse / bolt.mass
-		Sounds.pool.impact(frame.global_position, Sounds.Surface.METAL, 0.5 * _rail.last_stop_impulse * stop_speed, stop_speed, bolt.mass, Sounds.Surface.METAL, frame.mass)
+		var stop_energy := 0.5 * _rail.last_stop_impulse * stop_speed * STOP_SOUND_SHARE
+		Sounds.pool.impact(frame.global_position, Sounds.Surface.GUN, stop_energy, stop_speed, held_mass(), Sounds.Surface.GUN, frame.mass)
 	if _handle_rail:
 		_handle_rail.apply(delta)
 
@@ -275,7 +280,7 @@ func _strike(energy: float) -> void:
 		frame.apply_impulse(rear * _shot.breech_impulse * (1.0 - slide_share), bore_offset)
 
 	Ballistics.pool.fire_bullet(cartridge, muzzle.global_position, muzzle_velocity - rear * _shot.muzzle_velocity)
-	Ballistics.pool.play_shot(muzzle.global_position, _shot)
+	_bang.play(muzzle.global_position, _shot)
 	# The muzzle blast grows with the pressure still behind the bullet when it leaves.
 	_flash.visible = true
 	_flash.scale = Vector3.ONE * 0.03 * sqrt(_shot.muzzle_pressure / 3.0e7)

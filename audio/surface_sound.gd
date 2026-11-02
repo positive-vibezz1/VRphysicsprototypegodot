@@ -16,6 +16,10 @@ const CONTACT_RADIUS := 0.01
 const POISSON_TERM := 0.91
 ## Most highs a voice's filter is asked to take off a take, in dB, for a contact much longer than the take's.
 const MOST_DULLING := 40.0
+## When loose parts knock together after a hit, in seconds after it, and how fast each knock dies.
+const RATTLE_FROM := 0.006
+const RATTLE_TO := 0.04
+const RATTLE_DECAY := 0.0008
 
 ## Each mode is x frequency in Hz, y decay per second, z level.
 @export var modes: PackedVector3Array
@@ -29,6 +33,12 @@ const MOST_DULLING := 40.0
 ## The scrape of the contact itself: white noise through the same filter.
 @export var noise_level := 0.3
 @export var noise_decay := 0.003
+## A thing made of many parts has clusters of modes where a single piece has one, and that's what separates a knock from
+## a ring: each mode here becomes three this far apart, as a share of its frequency.
+@export var mode_spread := 0.0
+## Loose parts knocking together just after the hit: how many, and how loud next to the hit.
+@export var rattles := 0
+@export var rattle_level := 0.0
 ## kg/m3. What a wall of it weighs, and how much a surrounding liquid weighs it down.
 @export var density := 2400.0
 ## Young's modulus in Pa. How stiff it is, which sets how long a hit stays in contact.
@@ -69,7 +79,7 @@ func bake(hard: bool, rng: RandomNumberGenerator) -> AudioStreamWAV:
 	var length := noise_decay
 	for mode: Vector3 in modes:
 		length = maxf(length, 1.0 / mode.y)
-	var count := int(length * TIME_CONSTANTS * MIX_RATE)
+	var count := maxi(int(length * TIME_CONSTANTS * MIX_RATE), int((RATTLE_TO + RATTLE_DECAY * TIME_CONSTANTS) * MIX_RATE))
 	var mix := PackedFloat32Array()
 	mix.resize(count)
 
@@ -83,22 +93,33 @@ func bake(hard: bool, rng: RandomNumberGenerator) -> AudioStreamWAV:
 		mix[i] = filtered
 
 	for mode: Vector3 in modes:
-		# No two hits land in the same spot, so each take differs a little in tuning and in which modes it excites.
-		var frequency := mode.x * rng.randf_range(0.97, 1.03)
-		var ring := frequency * contact
-		var gain := mode.z * rng.randf_range(0.7, 1.0) / (1.0 + ring * ring)
-		var decay := exp(-mode.y / MIX_RATE)
-		var step := TAU * frequency / MIX_RATE
-		# The two term recurrence of a decaying sine, which is much cheaper than calling sin() per sample.
-		var factor := 2.0 * decay * cos(step)
-		var damping := decay * decay
-		var before := 0.0
-		var now := gain * decay * sin(step)
-		for i: int in mini(count, int(TIME_CONSTANTS / mode.y * MIX_RATE)):
-			mix[i] += now
-			var next := factor * now - damping * before
-			before = now
-			now = next
+		for partial: int in 3 if mode_spread > 0.0 else 1:
+			# No two hits land in the same spot, so each take differs a little in tuning and in which modes it excites.
+			var frequency := mode.x * rng.randf_range(0.97, 1.03) * (1.0 + (partial - 1) * mode_spread)
+			var ring := frequency * contact
+			var gain := mode.z * rng.randf_range(0.7, 1.0) / (1.0 + ring * ring)
+			var decay := exp(-mode.y / MIX_RATE)
+			var step := TAU * frequency / MIX_RATE
+			# The two term recurrence of a decaying sine, which is much cheaper than calling sin() per sample.
+			var factor := 2.0 * decay * cos(step)
+			var damping := decay * decay
+			var before := 0.0
+			var now := gain * decay * sin(step)
+			for i: int in mini(count, int(TIME_CONSTANTS / mode.y * MIX_RATE)):
+				mix[i] += now
+				var next := factor * now - damping * before
+				before = now
+				now = next
+
+	for rattle: int in rattles:
+		var at := int(rng.randf_range(RATTLE_FROM, RATTLE_TO) * MIX_RATE)
+		var knock := rattle_level * rng.randf_range(0.4, 1.0)
+		var knock_fade := exp(-1.0 / (RATTLE_DECAY * MIX_RATE))
+		var knock_filtered := 0.0
+		for i: int in range(at, mini(count, at + int(RATTLE_DECAY * TIME_CONSTANTS * MIX_RATE))):
+			knock_filtered += (rng.randf_range(-knock, knock) - knock_filtered) * filter
+			knock *= knock_fade
+			mix[i] += knock_filtered
 
 	var peak := 0.0
 	for sample: float in mix:

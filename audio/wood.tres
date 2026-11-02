@@ -4,13 +4,14 @@
 
 [resource]
 script = ExtResource("1")
-modes = PackedVector3Array(170, 45, 1, 340, 60, 0.9, 610, 80, 0.6, 1050, 110, 0.35, 1800, 160, 0.2)
+modes = PackedVector3Array(190, 100, 0.6, 330, 110, 0.8, 540, 130, 1, 820, 160, 0.9, 1250, 210, 0.7, 1900, 280, 0.5, 2800, 380, 0.3)
 reference_mass = 4.0
-level = 0.9
+level = 0.7
 soft_contact = 0.0012
 hard_contact = 0.0003
-noise_level = 0.3
-noise_decay = 0.003
+noise_level = 2.0
+noise_decay = 0.002
 density = 600.0
 stiffness = 5.0e+09
 absorption = 0.1
+mode_spread = 0.05

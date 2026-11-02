@@ -7,11 +7,12 @@ extends Node
 ## A hit made a sound. Energy in J, and what it came out as where it was made.
 signal played(surface: Surface, energy: float, volume: float, pitch: float)
 
-enum Surface { CONCRETE, METAL, BRASS, WOOD, SOFT, WATER }
+## METAL is one resonant piece, a plate or a pipe or a can. GUN is a solid thing bolted together from many parts.
+enum Surface { CONCRETE, METAL, BRASS, WOOD, SOFT, WATER, GUN }
 
 const SURFACE_PATHS: Array[String] = [
 	"res://audio/concrete.tres", "res://audio/metal.tres", "res://audio/brass.tres", "res://audio/wood.tres",
-	"res://audio/soft.tres", "res://audio/water.tres",
+	"res://audio/soft.tres", "res://audio/water.tres", "res://audio/gun.tres",
 ]
 ## Enough for a burst from the AR (5 shots ringing at once) with the casings and the steel over it.
 const VOICE_COUNT := 16
@@ -21,8 +22,9 @@ const FULL_ENERGY := 25.0
 ## Loudness follows energy far more gently than sound power does, as an ear and a game's mix both do: this way a 40 mJ
 ## casing comes out about 19 dB under a 25 J dropped rifle, instead of the 28 dB of amplitude going as sqrt(energy).
 const LOUDNESS_POWER := 1.0 / 3.0
-## Distance in m below which a hit is at full volume. Inverse distance past it.
-const UNIT_SIZE := 2.0
+## A hit's volume is what it comes to at this distance, in m, and inverse distance from there. Any further out and
+## everything by the head comes out about as loud as a gunshot.
+const UNIT_SIZE := 1.0
 ## Most sounds on their way to the ear at once. A wave takes 150 ms to get here from the far steel, so few are.
 const WAITING_COUNT := 32
 ## Below this at the ear a sound's echo isn't worth working out: the first wall is at least 8 m away.

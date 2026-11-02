@@ -504,4 +504,4 @@ func test_grabbing_makes_a_sound_of_the_glove_and_what_it_closed_on() -> void:
 	_hold(hand, gun.grip)
 	Sounds.pool.played.disconnect(listener)
 	assert_has(surfaces, Sounds.Surface.SOFT)
-	assert_has(surfaces, Sounds.Surface.METAL)
+	assert_has(surfaces, Sounds.Surface.GUN)

@@ -35,9 +35,10 @@ const PROBES: Array[Vector3] = [
 const COMB_LOOP := 0.0316
 const LEAST_FEEDBACK := 0.7
 const FEEDBACK_RANGE := 0.28
-const MOST_WET := 0.5
+## Godot's reverb is Freeverb, whose combs start to sound like a metal box past about this.
+const MOST_WET := 0.3
 ## Distance the wet level is set for: Sounds.UNIT_SIZE, where a hit is at full volume.
-const WET_DISTANCE := 2.0
+const WET_DISTANCE := 1.0
 ## An echo this much later than the direct sound is heard as its own sound: 50 ms, the limit of the ear's precedence
 ## effect. Anything sooner merges with the direct sound, and the reverb stands in for it.
 const SHORTEST_ECHO := 17.0
@@ -311,7 +312,7 @@ func _update_room() -> void:
 	var free_path := path / hits
 	var speed := ear_medium.sound_speed
 	reverb_seconds = reverberation(free_path, absorption, speed)
-	wet = minf(reverberant_share(free_path, absorption) * enclosing / above, MOST_WET)
+	wet = minf(reverberant_share(free_path, absorption) * pow(float(enclosing) / above, 2.0), MOST_WET)
 	_reverb.room_size = room_size(reverb_seconds)
 	# Soft surfaces take the highs first.
 	_reverb.damping = clampf(surfaces / hits * 2.0, 0.0, 1.0)

@@ -285,3 +285,82 @@ func test_a_reload_settles_quietly() -> void:
 	_box(1.0, 0.5).position.x = 2.0
 	await wait_physics_frames(60)
 	assert_gt(_heard.size(), 0, "and heard once it's over")
+
+
+func test_a_gun_is_a_knock_and_a_steel_plate_is_a_ring() -> void:
+	var gun := Sounds.pool.sound_of(Sounds.Surface.GUN)
+	var steel := Sounds.pool.sound_of(Sounds.Surface.METAL)
+	var gun_samples := _samples(Sounds.pool.stream_of(Sounds.Surface.GUN, true, 0))
+	var steel_samples := _samples(Sounds.pool.stream_of(Sounds.Surface.METAL, true, 0))
+	assert_lt(gun_samples.size() / float(SurfaceSound.MIX_RATE), 0.15, "over in a moment")
+	assert_gt(steel_samples.size() / float(SurfaceSound.MIX_RATE), 0.3, "where a plate rings on")
+	assert_gt(gun.modes.size() * 3, steel.modes.size() * 3, "and it has far more going on")
+	assert_gt(gun.rattles, 0, "with its parts knocking together")
+
+
+func test_a_rifle_blast_is_bigger_and_lower_than_a_pistols() -> void:
+	var pistol: Gun = (load("res://weapons/pistol/pistol.tscn") as PackedScene).instantiate()
+	var ar: Gun = (load("res://weapons/ar/ar.tscn") as PackedScene).instantiate()
+	add_child_autofree(pistol)
+	add_child_autofree(ar)
+	var small := GunshotSound.of(pistol.cartridge, pistol.barrel_length, pistol.gas_port, pistol.bolt.mass)
+	var big := GunshotSound.of(ar.cartridge, ar.barrel_length, ar.gas_port, ar.bolt.mass)
+	# 25 MPa over 7.3 cm3 of bore, and 106 MPa over 9.4 cm3, with a gamma of about 1.24.
+	assert_almost_eq(small.energy, 775.0, 80.0)
+	assert_almost_eq(big.energy, 4170.0, 400.0)
+	assert_almost_eq(small.blast_radius, 0.2, 0.01)
+	assert_almost_eq(big.blast_radius, 0.345, 0.015)
+	assert_lt(small.level, big.level)
+	assert_gt(small.level, 0.4, "a pistol is no quiet thing")
+	assert_true(GunshotSound.of(ar.cartridge, ar.barrel_length, ar.gas_port, ar.bolt.mass) == big, "baked only once")
+	assert_lt(big.crack_time, small.crack_time, "and the faster, thinner bullet cracks sharper")
+	assert_between(big.crack_time, 0.00005, 0.0002)
+	assert_eq(GunshotSound.crack_duration(300.0, 0.009), 0.0, "a subsonic bullet has no crack")
+
+
+func test_a_shot_starts_with_a_shock_and_has_weight_under_it() -> void:
+	var ar: Gun = (load("res://weapons/ar/ar.tscn") as PackedScene).instantiate()
+	add_child_autofree(ar)
+	var shot := GunshotSound.of(ar.cartridge, ar.barrel_length, ar.gas_port, ar.bolt.mass)
+	for take: AudioStreamWAV in shot.takes:
+		var samples := _samples(take)
+		var first_ms := 0.0
+		for i: int in GunshotSound.MIX_RATE / 1000:
+			first_ms = maxf(first_ms, absf(samples[i]))
+		assert_gt(first_ms, 0.5, "the pressure jumps all at once")
+		# The share of its energy that a low-pass at 500 Hz keeps.
+		var low := 0.0
+		var total := 0.0
+		var filtered := 0.0
+		var filter := 1.0 - exp(-TAU * 500.0 / GunshotSound.MIX_RATE)
+		for sample: float in samples:
+			filtered += (sample - filtered) * filter
+			low += filtered * filtered
+			total += sample * sample
+		assert_gt(low / total, 0.3, "and plenty of it down low")
+		assert_lt(_level(samples, samples.size() - 800, samples.size()), _level(samples, 0, 800) * 0.05, "it dies away")
+
+
+func test_a_bolt_stop_stays_well_under_the_shot() -> void:
+	var at := Vector3(90, 100, 0)
+	var ar: Gun = (load("res://weapons/ar/ar.tscn") as PackedScene).instantiate()
+	ar.position = at
+	add_child_autofree(ar)
+	var hand: PhysicsHand = (load("res://player/physics_hand.tscn") as PackedScene).instantiate()
+	add_child_autofree(hand)
+	hand.set_target(Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(0, -1, 0)), at))
+	(load("res://weapons/parts/cartridge_556x45.tres") as CartridgeSpec).dud_chance = 0.0
+	await wait_physics_frames(2)
+	hand.input_grip = 1.0
+	hand.grab(ar.grip)
+	await wait_physics_frames(2)
+	_heard.clear()
+	hand.input_trigger = 1.0
+	await wait_physics_frames(45)
+	var stops := 0
+	for sound: Dictionary in _heard:
+		if sound["surface"] == Sounds.Surface.GUN:
+			stops += 1
+			assert_lt(sound["volume"] as float, 0.2, "a bolt on its stop is nothing next to the shot")
+			assert_lt(sound["pitch"] as float, 0.8, "and rings at the pitch of the whole rifle")
+	assert_gt(stops, 0)

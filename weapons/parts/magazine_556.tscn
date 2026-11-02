@@ -37,3 +37,4 @@ script = ExtResource("3")
 
 [node name="ImpactSound" type="Node" parent="."]
 script = ExtResource("impact_sound")
+surface = 6

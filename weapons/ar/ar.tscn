@@ -266,3 +266,5 @@ transform = Transform3D(1, 0, 0, 0, 0.990268, -0.139173, 0, 0.139173, 0.990268, 
 
 [node name="ImpactSound" type="Node" parent="Frame"]
 script = ExtResource("impact_sound")
+surface = 6
+ringing_mass = 3.2

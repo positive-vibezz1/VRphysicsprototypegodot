@@ -269,7 +269,7 @@ func test_the_open_has_little_reverb_and_a_room_has_plenty() -> void:
 		var size := Vector3(12, 8, 12) * (Vector3.ONE - side.abs()) + side.abs() * 0.4
 		_wall(Vector3(0, 1.6, 0) + side * Vector3(5, 3, 5), size)
 	await wait_physics_frames(SWEEP)
-	assert_gt(acoustics.wet, 0.3)
+	assert_gt(acoustics.wet, 0.2)
 	assert_gt(acoustics.reverb_seconds, 1.0, "bare concrete rings")
 
 

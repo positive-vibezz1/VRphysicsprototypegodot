@@ -8,8 +8,6 @@ const CASING_SCENE := "res://ballistics/casing.tscn"
 const BULLET_COUNT := 32
 const CASING_COUNT := 48
 const HOLE_COUNT := 64
-## A shot stays at full volume out to here.
-const SHOT_UNIT_SIZE := 8.0
 
 signal bullet_hit(collider: Object, energy: float)
 
@@ -21,7 +19,6 @@ var _holes: Array[MeshInstance3D] = []
 var _next_bullet := 0
 var _next_casing := 0
 var _next_hole := 0
-var _bang: AudioStreamWAV
 var _click: AudioStreamWAV
 
 
@@ -53,7 +50,6 @@ func _ready() -> void:
 		add_child(hole)
 		_holes.append(hole)
 
-	_bang = _make_noise_burst(0.35, 0.03)
 	_click = _make_noise_burst(0.015, 0.003)
 
 
@@ -84,12 +80,6 @@ func on_bullet_hit(bullet: Bullet, position: Vector3, normal: Vector3, collider:
 		var up := Vector3.UP if absf(normal.y) < 0.95 else Vector3.RIGHT
 		hole.global_transform = Transform3D(Basis.looking_at(-normal, up), position + normal * 0.002)
 		hole.visible = true
-
-
-## Louder with recoil and sharper with muzzle pressure: 5.56 cracks, 9 mm thumps.
-func play_shot(position: Vector3, shot: GasSim.Shot) -> void:
-	var pitch := clampf(sqrt(shot.muzzle_pressure / 6.0e7), 0.6, 1.5)
-	Sounds.pool.play(_bang, position, clampf(shot.breech_impulse / 6.5, 0.3, 1.0), pitch, SHOT_UNIT_SIZE)
 
 
 func play_click(position: Vector3) -> void:
