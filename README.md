@@ -350,7 +350,6 @@ ballistics/      gas sim, bullets, casings, pools, fluid drag
 audio/           surface sounds, impact and gunshot sound, voice pool, media, acoustics
 sandbox/         test range (main scene), parkour and block courses, time trial, dummy,
                  debug log
-enemies/         alien and crawler models (not placed in the range yet)
 tests/           GUT tests
 tools/           gun model builder and render tool
 addons/gut/      GUT test framework
@@ -376,7 +375,6 @@ are moved only by forces, impulses and joints; nothing is allocated in per-tick 
 - **Continuous collision may miss very thin colliders** at rifle speeds.
 - **A pooled casing keeps the size of its first cartridge** for drag and buoyancy, which only shows in water.
 - **Test flake:** the Jolt job-system warning above fails about 1 full test run in 20.
-- **Enemies** exist only as models.
 
 ## Credits and license
 
