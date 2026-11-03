@@ -9,6 +9,9 @@ extends Node3D
 ## from before and after a change to the movement numbers can be compared. A run starts by logging the numbers in use.
 
 const CHANNEL := "trial"
+## Loaded by path rather than by its class name, so the course still works on a run that starts before the editor has
+## registered the class, as the first run after pulling it did.
+const Gate := preload("res://sandbox/trial_gate.gd")
 ## Real seconds a split stays on the wrist in place of the clock, and the final time.
 const SHOW_SPLIT := 3.0
 const SHOW_FINISH := 15.0
@@ -26,7 +29,7 @@ var splits: Array[float] = []
 var best_splits: Array[float] = []
 var best_time := 0.0
 
-var _gates: Array[TrialGate] = []
+var _gates: Array[Gate] = []
 ## The gate to go for next. The start, until the player is standing in it.
 var _next := 0
 var _ready_to_go := false
@@ -48,7 +51,7 @@ var _message_time := 0.0
 
 func _ready() -> void:
 	for child: Node in $Gates.get_children():
-		var gate := child as TrialGate
+		var gate := child as Gate
 		gate.body_entered.connect(_on_entered.bind(_gates.size()))
 		gate.body_exited.connect(_on_exited.bind(_gates.size()))
 		_gates.append(gate)
@@ -69,7 +72,7 @@ func _ready() -> void:
 	_light_gates()
 	_show_board()
 	var titles := PackedStringArray()
-	for gate: TrialGate in _gates.slice(1):
+	for gate: Gate in _gates.slice(1):
 		titles.append(gate.title)
 	DebugLog.event(CHANNEL, "csv run,time,%s" % ",".join(titles))
 
@@ -195,11 +198,11 @@ func _show_on_wrist(text: String, seconds: float) -> void:
 
 func _light_gates() -> void:
 	for i: int in _gates.size():
-		var state := TrialGate.State.WAITING
+		var state := Gate.State.WAITING
 		if i == _next:
-			state = TrialGate.State.NEXT
+			state = Gate.State.NEXT
 		elif i > 0 and i < _next:
-			state = TrialGate.State.PASSED
+			state = Gate.State.PASSED
 		_gates[i].set_state(state)
 
 

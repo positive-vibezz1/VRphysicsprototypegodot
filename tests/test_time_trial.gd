@@ -220,23 +220,130 @@ func test_the_rock_wall_has_one_way_up_and_needs_the_traverse() -> void:
 
 func test_each_grapple_anchor_is_in_range_and_the_swing_clears_the_ground() -> void:
 	var grapple: Grapple = _player.get_node("RightGrapple")
-	var hand_height := 1.2
-	var beam := _part("SwingBeam").position
-	var rock := _part("Rock")
-	var from := Vector3(rock.position.x + 2.0, _top("Rock") + hand_height, rock.position.z)
+	var hand_height := 1.1
+	var beam := _part("SwingBeam").position + Vector3.DOWN * 0.3
+	var deck := _part("LaunchDeck")
+	var from := Vector3(_east("LaunchDeck"), _top("LaunchDeck") + hand_height, deck.position.z)
 	var cable := from.distance_to(beam)
-	assert_lt(cable, grapple.max_range, "the swing beam is in range from the rock")
-	assert_gt(beam.y - cable, 1.8, "the lowest point of the swing leaves the feet off the ground")
-	assert_lt(_top("SwingTower"), _top("Rock"), "and it lands lower than it set off")
-	var past := _part("SwingTower").position.x - 2.0 - beam.x
-	assert_lt(past, beam.x - from.x + 0.01, "and no further past the beam than it set off before it")
-	var haul_from := _part("SwingTower").position + Vector3(2, _top("SwingTower") + hand_height, 0)
-	assert_lt(haul_from.distance_to(_part("HaulBeam").position), grapple.max_range, "the haul beam is in range")
-	assert_gt(_part("HaulBeam").position.y, _top("HaulTower") + 2.5, "and high enough over its tower to haul onto it")
+	assert_lt(cable, grapple.max_range, "the swing beam is in range from the launch deck")
+	assert_gt(beam.y - cable - hand_height, 1.0, "the lowest point of the swing leaves the feet off the ground")
+	assert_lt(_top("SwingTower"), _top("LaunchDeck"), "and it lands lower than it set off")
+	var past := _west("SwingTower") - beam.x
+	var feet_there := beam.y - sqrt(cable * cable - past * past) - hand_height
+	assert_gt(feet_there, _top("SwingTower"), "the arc clears the tower's near edge, so holding on doesn't hit its side")
+	var haul_beam := _part("HaulBeam").position
+	assert_between(haul_beam.x, _west("SwingTower"), _east("SwingTower"), "the haul beam is straight over the swing tower")
+	assert_between(_west("HaulTower") - haul_beam.x, 0.4, 1.0, "just off the tall tower's face")
+	assert_gt(haul_beam.y, _top("HaulTower") + 2.5, "and high enough over it to haul up past the top")
 	var drop_from := _part("HaulTower").position + Vector3(0, _top("HaulTower") + hand_height, 0)
 	var hook := _part("Hook").position
 	assert_lt(drop_from.distance_to(hook), grapple.max_range, "the hook is in range")
 	assert_gt(hook.y - drop_from.distance_to(hook), 1.8, "and swinging from it clears the ground")
+
+
+func test_the_ladder_back_to_the_launch_deck_cant_skip_the_rock_wall() -> void:
+	var rail := _part("DeckRailL")
+	assert_almost_eq(rail.position.y + (rail.get("length") as float) * 0.5, _top("LaunchDeck"), 0.01, "the ladder reaches the deck")
+	assert_gt(_top("Rock") - _top("LaunchDeck"), 1.5, "the rock top is more than a swing jump above the deck")
+	var gate := _gate("Rock")
+	assert_lt(gate.position.x + gate.size.x * 0.5, _east("Rock") - 0.05, "standing on the deck isn't inside the rock's gate")
+	var deck := _part("LaunchDeck")
+	assert_almost_eq(_west("LaunchDeck"), _east("Rock"), 0.01, "the deck is right under the rock's east side")
+	assert_true(deck.get("grapple_target") == false, "and the grapple can't catch it")
+
+
+func test_holding_on_until_over_the_tower_lands_the_swing_and_letting_go_early_falls_short() -> void:
+	await _swing_off_the_deck(30)
+	assert_lt(_here().y, 0.2, "let go at the bottom of the swing, it falls into the gap")
+	await _swing_off_the_deck(160)
+	assert_almost_eq(_here().y, _top("SwingTower"), 0.1, "held on until over the tower, it lands on it")
+
+
+func test_hauling_up_the_tall_tower_and_mantling_off_its_lip() -> void:
+	var beam := _part("HaulBeam").position
+	await _place(Vector3(beam.x - 0.2, _top("SwingTower") + 0.05, beam.z))
+	_right.set_input(&"trigger", 1.0)
+	_hook_on(Vector3(beam.x, beam.y - 0.25, beam.z))
+	var low := Transform3D(RIGHT_REST.basis, Vector3(0.2, 1.0, -0.1))
+	var high := Transform3D(RIGHT_REST.basis, Vector3(0.2, 1.8, -0.1))
+	var nearest_face := INF
+	for pull: int in 8:
+		if _here().y > _top("HaulTower") - 0.5:
+			break
+		for i: int in 20:
+			_set_pose(_right, high.interpolate_with(low, (i + 1) / 20.0))
+			await wait_physics_frames(1)
+		for i: int in 30:
+			_set_pose(_right, low.interpolate_with(high, (i + 1) / 30.0))
+			await wait_physics_frames(1)
+			nearest_face = minf(nearest_face, _west("HaulTower") - _here().x)
+	assert_gt(_here().y, _top("HaulTower") - 0.5, "a few pulls of the arm haul the body up the tower")
+	assert_gt(nearest_face, 0.4, "straight up, clear of its face")
+	var lip := _trial.to_global(Vector3(_part("HaulLip").position.x, _top("HaulTower"), _here().z))
+	var reach := Transform3D(LEFT_REST.basis, lip - _player.global_position + Vector3(0, 0.03, 0))
+	for i: int in 20:
+		_set_pose(_left, LEFT_REST.interpolate_with(reach, (i + 1) / 20.0))
+		await wait_physics_frames(1)
+	_left.set_input(&"grip", 1.0)
+	await wait_physics_frames(5)
+	assert_true((_player.get_node("LeftHand") as PhysicsHand).climbing, "the other hand grips the red lip")
+	_right.set_input(&"trigger", 0.0)
+	_right.set_input(&"jump", true)
+	await wait_physics_frames(150)
+	assert_almost_eq(_here().y, _top("HaulTower"), 0.05, "and jumping mantles onto the top")
+	assert_gt(_here().x, _west("HaulTower"), "over the edge")
+
+
+## Runs off the launch deck holding the grapple on the swing beam, and lets go a number of ticks after leaving it.
+func _swing_off_the_deck(release_after: int) -> void:
+	await _place(Vector3(_east("LaunchDeck") - 1.9, _top("LaunchDeck") + 0.05, _part("LaunchDeck").position.z))
+	_right.set_input(&"trigger", 1.0)
+	var beam := _part("SwingBeam").position
+	_hook_on(Vector3(beam.x, beam.y - 0.3, beam.z))
+	_left.set_input(&"primary", Vector2(1, 0))
+	var left_at := -1
+	for tick: int in 300:
+		await get_tree().physics_frame
+		if left_at < 0 and _here().x > _east("LaunchDeck"):
+			left_at = tick
+		if left_at >= 0 and tick - left_at == release_after:
+			break
+	_right.set_input(&"trigger", 0.0)
+	_left.set_input(&"primary", Vector2.ZERO)
+	await wait_physics_frames(90)
+
+
+## The right hand's grapple caught on a point, as if aimed at it and squeezed.
+func _hook_on(local_anchor: Vector3) -> void:
+	var grapple: Grapple = _player.get_node("RightGrapple")
+	var hand: PhysicsHand = _player.get_node("RightHand")
+	grapple.attached = true
+	grapple.anchor = _trial.to_global(local_anchor)
+	grapple.length = hand.target.origin.distance_to(grapple.anchor)
+	grapple.set("_previous_distance", grapple.length)
+
+
+func _place(at: Vector3) -> void:
+	_player.global_position = _trial.to_global(at)
+	_player.linear_velocity = Vector3.ZERO
+	_left.set_input(&"primary", Vector2.ZERO)
+	_right.set_input(&"trigger", 0.0)
+	_right.set_input(&"jump", false)
+	_left.set_input(&"grip", 0.0)
+	_set_pose(_left, LEFT_REST)
+	_set_pose(_right, RIGHT_REST)
+	await wait_physics_frames(20)
+
+
+## Edges of a block, in the course's space.
+func _west(block_name: String) -> float:
+	var block := _part(block_name)
+	return block.position.x - (block.get("size") as Vector3).x * 0.5
+
+
+func _east(block_name: String) -> float:
+	var block := _part(block_name)
+	return block.position.x + (block.get("size") as Vector3).x * 0.5
 
 
 ## Steers the left stick at a spot on the course's floor plan until the player is there.
