@@ -380,10 +380,16 @@ are moved only by forces, impulses and joints; nothing is allocated in per-tick 
 
 ## Credits and license
 
-- Hand models, finger animations and glove textures: from [Godot XR Tools](https://github.com/GodotVR/godot-xr-tools)
-  4.5.2, by DigitalN8m4r3 (Miodrag Sejic), made with MakeHuman, released under **CC0**. See
-  `player/hands/README.md` and `player/hands/License.md`.
-- [GUT](https://github.com/bitwes/Gut) by Butch Wesley, MIT license, in `addons/gut/`.
-- Built with [Godot Engine](https://godotengine.org/) (MIT) and Jolt Physics (MIT).
+This project's own code and assets are released into the public domain under [the Unlicense](LICENSE). Anyone can
+copy, modify, publish, use, compile, sell or distribute them, for any purpose and by any means, without asking and
+without giving credit.
 
-No license has been chosen for the rest of the project yet.
+Third-party parts keep their own licenses:
+
+- Hand models, finger animations and glove textures: from [Godot XR Tools](https://github.com/GodotVR/godot-xr-tools)
+  4.5.2, by DigitalN8m4r3 (Miodrag Sejic), made with MakeHuman, released under **CC0** (also public domain). See
+  `player/hands/README.md` and `player/hands/License.md`.
+- [GUT](https://github.com/bitwes/Gut) by Butch Wesley, **MIT** license, in `addons/gut/`. If you redistribute GUT,
+  keep its license notice.
+- Built with [Godot Engine](https://godotengine.org/) (MIT) and Jolt Physics (MIT). An exported game includes Godot,
+  whose license asks for its notice to be included somewhere, such as a credits screen.
