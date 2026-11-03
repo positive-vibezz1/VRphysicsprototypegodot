@@ -481,6 +481,27 @@ func test_two_arms_haul_up_faster_than_one() -> void:
 	assert_gt(_player.global_position.y, one_arm + 0.1)
 
 
+## Climbing hand over hand, the hand on the higher hold often stays still while the lower one pulls.
+func test_a_hand_only_holding_on_meets_a_pulling_one_halfway() -> void:
+	_add_block(Vector3(0.2, 1.2, 2.73), Vector3(0.3, 0.05, 0.05), true)
+	_add_block(Vector3(-0.2, 1.6, 2.73), Vector3(0.3, 0.05, 0.05), true)
+	var left_high := LEFT_REST
+	left_high.origin.y += 0.4
+	_set_pose(_left, left_high)
+	await wait_physics_frames(10)
+	_left.set_input(&"grip", 1.0)
+	_right.set_input(&"grip", 1.0)
+	await wait_physics_frames(3)
+	var left: PhysicsHand = _player.get_node("LeftHand")
+	var right: PhysicsHand = _player.get_node("RightHand")
+	assert_true(left.climbing and right.climbing)
+	await _pull_right_hand_down(0.8, 30)
+	await wait_physics_frames(30)
+	assert_true(right.climbing, "the pulling hand keeps its hold")
+	assert_true(left.climbing, "and so does the still one")
+	assert_almost_eq(_player.global_position.y, 0.4, 0.05, "the body rose half the pull")
+
+
 func test_an_arm_too_weak_for_the_body_slips_off() -> void:
 	_player.global_position = Vector3(0, 4, 3)
 	_bar_at_right_hand(4.0)

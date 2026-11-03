@@ -244,7 +244,7 @@ func _update_cycle() -> void:
 				DebugLog.event("gun", "%s chambered a round, %d left in the magazine" % [name, magazine.count])
 
 	# The follower of an empty magazine lifts the catch into the bolt's path.
-	if magazine and magazine.count == 0 and travel >= catch_travel and _short_of_catch:
+	if magazine and magazine.count == 0 and travel >= catch_travel and _short_of_catch and not catch_engaged:
 		catch_engaged = true
 		DebugLog.event("gun", "%s bolt locked back on an empty magazine" % name)
 	elif catch_engaged and travel > catch_travel + 0.003 and not (magazine and magazine.count == 0):
@@ -260,6 +260,10 @@ func _strike(energy: float) -> void:
 		Ballistics.pool.play_click(frame.global_position)
 		return
 	chamber = Chamber.SPENT
+	# The hammer can fall in the tick the bolt gets home, before the rail has stopped it. The bolt stops on the barrel
+	# before the powder burns, or its forward speed would come off the shot's: at 120 Hz and up that short stroked the
+	# next cycle, short of the ejector, and left a spent case under the hammer.
+	_rail.stop_at_front()
 
 	var charge_scale := 1.0 + _rng.randfn(0.0, charge_spread)
 	GasSim.simulate(cartridge, barrel_length, _shot, gas_port, bolt.mass, charge_scale)

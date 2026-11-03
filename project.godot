@@ -32,6 +32,7 @@ jolt_physics_3d/limits/max_linear_velocity=1500.0
 
 [rendering]
 
+anti_aliasing/quality/msaa_3d=2
 renderer/rendering_method="mobile"
 rendering_device/driver.windows="vulkan"
 textures/vram_compression/import_etc2_astc=true

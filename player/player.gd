@@ -136,7 +136,8 @@ var _swing_used := 0.0
 var _mantling := false
 var _mantle_spot := Vector3.ZERO
 var _mantle_time := 0.0
-var _was_menu := false
+## Starts pressed, so the press that reset the range doesn't reset the new one on its first tick.
+var _was_menu := true
 var _was_jump := false
 var _motion_state := &""
 var _measure_rate := false
@@ -203,8 +204,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		_stand(hands_on)
 		if hands_on > 0:
-			_hang(_left_hand, hands_on)
-			_hang(_right_hand, hands_on)
+			_hang(hands_on)
 		else:
 			_walk(delta)
 	_measure_arm_swing(tick)
@@ -332,13 +332,19 @@ func _follow_head() -> void:
 	_origin.global_position -= followed
 
 
-## Hanging on a hold: the arm pulls the body to bring the controller back to where it took hold, and carries its
-## share of the weight, up to what an arm can do. Letting go leaves the body with the speed it has.
-func _hang(hand: PhysicsHand, hands_on: int) -> void:
-	if hand.climbing:
-		var gap := hand.climb_point - hand.target.origin
-		var acceleration := arm_response * arm_response * gap - 2.0 * arm_response * hand.controller_velocity
-		apply_central_force((mass * (acceleration + Vector3.UP * _gravity / hands_on)).limit_length(arm_force))
+## Hanging on holds: each arm pulls the body to bring its controller back to where it took hold, and between them they
+## carry the weight, up to what the arms on holds can do together. Capped together and not one by one, so a hand only
+## holding on meets a pulling one halfway. Capped one by one, the two would cancel out, gravity would win, and the
+## pulling hand would end up a whole stroke from its hold and lose it. Letting go leaves the body with the speed it has.
+func _hang(hands_on: int) -> void:
+	var pull := Vector3.UP * _gravity + _arm_pull(_left_hand) + _arm_pull(_right_hand)
+	apply_central_force((mass * pull).limit_length(arm_force * hands_on))
+
+
+func _arm_pull(hand: PhysicsHand) -> Vector3:
+	if not hand.climbing:
+		return Vector3.ZERO
+	return arm_response * arm_response * (hand.climb_point - hand.target.origin) - 2.0 * arm_response * hand.controller_velocity
 
 
 ## The legs push to bring the body up to the stick's speed along the ground, up to what legs can do. Anything

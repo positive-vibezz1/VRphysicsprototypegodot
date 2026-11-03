@@ -101,6 +101,16 @@ func apply(delta: float) -> void:
 	frame.apply_force(axis * force, offset)
 
 
+## Stops a part still running forward into its front stop, as hitting the stop would.
+func stop_at_front() -> void:
+	update()
+	if velocity < 0.0:
+		var inverse_mass := 1.0 / body.mass + 1.0 / frame_mass
+		var impulse := frame.global_basis.z * -velocity / inverse_mass
+		body.apply_central_impulse(impulse)
+		frame.apply_impulse(-impulse, body.global_position - frame.global_position)
+
+
 ## Speed that covers a gap to a stop in one tick. The last millimeter closes at half that: the frame's real
 ## inertia isn't known exactly here, and a full correction every tick would buzz.
 func _landing_speed(gap: float, delta: float) -> float:

@@ -188,6 +188,26 @@ func test_ar_auto_cycles_at_a_real_rate() -> void:
 	assert_between(gun.mag_well.magazine.count, start - _shots.size(), start - _shots.size() + 1, "one fed per shot")
 
 
+## At 120 Hz the carrier could reach battery still moving forward fast, and firing then took its speed off the shot's,
+## so the next stroke fell short of the ejector and the hammer hit the spent case.
+func test_ar_auto_empties_a_magazine_at_every_refresh_rate() -> void:
+	for rate: int in Player.KNOWN_REFRESH_RATES:
+		Engine.physics_ticks_per_second = rate
+		_shots.clear()
+		var clicks: Array[float] = []
+		var gun := await _spawn_held(AR_SCENE)
+		gun.misfired.connect(clicks.append)
+		gun.fire_control.selector = FireControl.Selector.AUTO
+		_trigger(gun, true)
+		await wait_physics_frames(rate * 4)
+		_trigger(gun, false)
+		assert_eq(_shots.size(), 31, "%d Hz: the chambered round and all 30 in the magazine" % rate)
+		assert_eq(clicks.size(), 0, "%d Hz: no clicks on a spent case" % rate)
+		gun.free()
+		_hand.free()
+	Engine.physics_ticks_per_second = 90
+
+
 func test_ar_burst_fires_three_per_pull() -> void:
 	var gun := await _spawn_held(AR_SCENE)
 	gun.fire_control.selector = FireControl.Selector.BURST
