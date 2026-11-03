@@ -163,6 +163,19 @@ func test_a_holster_holds_one_gun() -> void:
 	assert_true(_all_frozen(ar, false), "the second one drops")
 
 
+func test_where_two_reach_the_nearer_one_takes_it() -> void:
+	# Both shoulders, wide enough to overlap behind the neck.
+	var left_shoulder := _holster(Transform3D(Basis(Vector3.UP, PI / 2), Vector3(-0.15, -0.12, 0.18)))
+	left_shoulder.radius = 0.25
+	_shoulder.radius = 0.25
+	var ar: Gun = await _gun_in(_right, AR_SCENE)
+	await _move(_right, left_shoulder.spot().origin + Vector3(0.1, 0, 0))
+	_right.input_grip = 0.0
+	await wait_physics_frames(2)
+	assert_eq(left_shoulder.gun, ar, "the left one, 10 cm off, over the right one 20 cm off")
+	assert_null(_shoulder.gun)
+
+
 func test_not_while_the_other_hand_still_holds_it() -> void:
 	var ar: Gun = await _gun_in(_right, AR_SCENE)
 	await wait_physics_frames(2)
@@ -188,6 +201,7 @@ func test_the_player_has_a_hip_and_a_shoulder_holster_on_each_side() -> void:
 		var mirror := Basis(Vector3(-1, 0, 0), Vector3.UP, Vector3.BACK)
 		assert_almost_eq(left.pose.origin, mirror * right.pose.origin, Vector3.ONE * 1.0e-6, spot)
 		assert_true(left.pose.basis.is_equal_approx(mirror * right.pose.basis * mirror), spot)
+		assert_eq(left.radius, right.radius, spot)
 	await wait_physics_frames(1)
 
 

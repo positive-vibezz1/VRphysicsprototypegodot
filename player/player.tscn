@@ -176,9 +176,11 @@ top_level = true
 script = ExtResource("holster")
 head = NodePath("../XROrigin3D/XRCamera3D")
 pose = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -0.15, -0.12, 0.18)
+radius = 0.25
 
 [node name="RightShoulderHolster" type="Node3D" parent="." node_paths=PackedStringArray("head")]
 top_level = true
 script = ExtResource("holster")
 head = NodePath("../XROrigin3D/XRCamera3D")
 pose = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0.15, -0.12, 0.18)
+radius = 0.25

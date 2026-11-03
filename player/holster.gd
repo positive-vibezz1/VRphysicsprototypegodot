@@ -18,19 +18,29 @@ func _exit_tree() -> void:
 	all.erase(self)
 
 
-## Puts the gun in the first free holster its grip is in. Returns whether one took it.
+## Puts the gun in the nearest free holster, if its grip is in that one's reach. Returns whether it took it.
 static func stow(released: Gun) -> bool:
 	var grip := released.grip.global_position
+	var nearest: Holster
+	var off := Vector3.INF
 	for holster: Holster in all:
-		if not holster.gun and holster.in_reach(grip):
-			holster._take(released)
-			return true
-	# How far off a near miss was, for placing them where hands go.
-	for holster: Holster in all:
-		var off := holster.spot().origin.distance_to(grip)
-		if off < holster.radius * 3.0:
-			DebugLog.event("hand", "%s let go %.2f m from the %s, which takes one within %.2f m" % [released.name, off, holster.name, holster.radius])
+		var from_spot := holster._from_spot(grip)
+		if not holster.gun and from_spot.length() < off.length():
+			nearest = holster
+			off = from_spot
+	if nearest and off.length() < nearest.radius:
+		nearest._take(released)
+		return true
+	# Which way a near miss was, for placing them where hands go.
+	if nearest and off.length() < 0.5:
+		DebugLog.event("hand", "%s let go %.2f m from the %s (%+.2f right, %+.2f up, %+.2f back), which takes one within %.2f m" % [released.name, off.length(), nearest.name, off.x, off.y, off.z, nearest.radius])
 	return false
+
+
+## Where a point is from the spot, along the torso's right, up and back.
+func _from_spot(point: Vector3) -> Vector3:
+	var at := spot()
+	return pose.basis * (at.basis.inverse() * (point - at.origin))
 
 
 ## Frees a gun a hand is taking, before the hand weighs it: a frozen body has no inertia to carry.
