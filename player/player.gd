@@ -215,6 +215,12 @@ func _physics_process(delta: float) -> void:
 	var yaw := Basis(Vector3.UP, atan2(-forward.x, -forward.z))
 	_right_shoulder.global_position = _camera.global_position + yaw * shoulder_offset
 	_left_shoulder.global_position = _camera.global_position + yaw * Vector3(-shoulder_offset.x, shoulder_offset.y, shoulder_offset.z)
+	# A stock only beds into a shoulder while the gun points where the head looks. Swung back over a shoulder to be
+	# put away, a rifle passes it, instead of snagging on a body that can't be seen or felt.
+	var layer := 256 if _aimed(_left_hand) or _aimed(_right_hand) else 0
+	if _right_shoulder.collision_layer != layer:
+		_right_shoulder.collision_layer = layer
+		_left_shoulder.collision_layer = layer
 
 	var slow := not _fit_mode and (_left_controller.is_button_pressed(&"bullet_time") or _right_controller.is_button_pressed(&"bullet_time"))
 	if _bullet_time.update(slow, tick):
@@ -618,6 +624,12 @@ func set_tick_rate(rate: int) -> void:
 	if rate != Engine.physics_ticks_per_second:
 		Engine.physics_ticks_per_second = rate
 		print("Physics tick rate set to ", rate, " Hz")
+
+
+## Whether the hand holds a gun pointing within 60° of where the head looks.
+func _aimed(hand: PhysicsHand) -> bool:
+	var gun: Gun = hand.held.owner as Gun if hand.held else null
+	return gun != null and gun.frame.global_basis.z.dot(_camera.global_basis.z) > 0.5
 
 
 static func _bottom_of(capsule: CollisionShape3D) -> float:

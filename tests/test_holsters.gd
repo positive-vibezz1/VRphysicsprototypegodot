@@ -79,6 +79,21 @@ func test_letting_go_of_the_pistol_at_the_hip_holsters_it() -> void:
 	assert_lt(pistol.muzzle.global_position.y, pistol.grip.global_position.y - 0.05, "muzzle down")
 
 
+func test_a_lefty_uses_the_left_hip() -> void:
+	var left_hip := _holster(Transform3D(Basis.IDENTITY, Vector3(-0.22, -0.6, 0.03)))
+	var pistol: Gun = await _gun_in(_left, PISTOL_SCENE)
+	await _move(_left, left_hip.spot().origin)
+	_left.input_grip = 0.0
+	await wait_physics_frames(2)
+	assert_eq(left_hip.gun, pistol)
+	assert_null(_hip.gun)
+	assert_lt(pistol.muzzle.global_position.y, pistol.grip.global_position.y - 0.05, "muzzle down")
+	_left.input_grip = 1.0
+	await wait_physics_frames(2)
+	assert_eq(_left.held, pistol.grip, "drawn with the left hand")
+	assert_null(left_hip.gun)
+
+
 func test_a_holstered_gun_goes_where_the_body_goes() -> void:
 	var pistol: Gun = await _gun_in(_right, PISTOL_SCENE)
 	await _move(_right, _hip.spot().origin)
@@ -160,10 +175,61 @@ func test_not_while_the_other_hand_still_holds_it() -> void:
 	assert_null(_shoulder.gun, "the support hand keeps it")
 
 
-func test_the_player_has_both_holsters() -> void:
+func test_the_player_has_a_hip_and_a_shoulder_holster_on_each_side() -> void:
 	var range_scene: Node = (load(ProjectSettings.get_setting("application/run/main_scene")) as PackedScene).instantiate()
 	add_child_autofree(range_scene)
 	var camera: Node3D = range_scene.get_node("Player/XROrigin3D/XRCamera3D")
-	assert_eq((range_scene.get_node("Player/HipHolster") as Holster).head, camera)
-	assert_eq((range_scene.get_node("Player/ShoulderHolster") as Holster).head, camera)
+	for spot: String in ["HipHolster", "ShoulderHolster"]:
+		var left: Holster = range_scene.get_node("Player/Left" + spot)
+		var right: Holster = range_scene.get_node("Player/Right" + spot)
+		assert_eq(left.head, camera)
+		assert_eq(right.head, camera)
+		# Mirror images: across the body, and the gun turned the other way about the vertical.
+		var mirror := Basis(Vector3(-1, 0, 0), Vector3.UP, Vector3.BACK)
+		assert_almost_eq(left.pose.origin, mirror * right.pose.origin, Vector3.ONE * 1.0e-6, spot)
+		assert_true(left.pose.basis.is_equal_approx(mirror * right.pose.basis * mirror), spot)
 	await wait_physics_frames(1)
+
+
+## Drives the player's real rig, as test_player does.
+func _tracker(tracker_name: StringName, pose: Transform3D) -> XRControllerTracker:
+	var tracker := XRControllerTracker.new()
+	tracker.name = tracker_name
+	tracker.type = XRServer.TRACKER_CONTROLLER
+	XRServer.add_tracker(tracker)
+	tracker.set_pose(&"grip", pose, Vector3.ZERO, Vector3.ZERO, XRPose.XR_TRACKING_CONFIDENCE_HIGH)
+	return tracker
+
+
+func test_a_rifle_swung_back_over_the_shoulder_gets_past_it_into_the_holster() -> void:
+	var aim := Transform3D(LEVEL_GRIP, Vector3(0.2, 1.3, -0.35))
+	var right := _tracker(&"right_hand", aim)
+	var left := _tracker(&"left_hand", Transform3D(LEVEL_GRIP, Vector3(-0.2, 1.1, -0.2)))
+	var range_scene: Node3D = (load(ProjectSettings.get_setting("application/run/main_scene")) as PackedScene).instantiate()
+	add_child_autofree(range_scene)
+	var player: Player = range_scene.get_node("Player")
+	player.global_position = Vector3(0, 0, 3)
+	var hand: PhysicsHand = player.get_node("RightHand")
+	var ar: Gun = range_scene.get_node("AR")
+	# A live runtime sends a pose every frame. Send one now that the rig is listening.
+	right.set_pose(&"grip", aim, Vector3.ZERO, Vector3.ZERO, XRPose.XR_TRACKING_CONFIDENCE_HIGH)
+	left.set_pose(&"grip", left.get_pose(&"grip").transform, Vector3.ZERO, Vector3.ZERO, XRPose.XR_TRACKING_CONFIDENCE_HIGH)
+	await wait_physics_frames(30)
+	ar.grip.snap_to(hand.global_transform)
+	right.set_input(&"grip", 1.0)
+	await wait_physics_frames(20)
+	assert_eq(hand.held, ar.grip, "in the hand")
+	var shoulder: AnimatableBody3D = player.get_node("RightShoulder")
+	assert_eq(shoulder.collision_layer, 256, "aimed, the stock braces on the shoulder")
+	# Back past the shoulder in half a second, barrel up, straight to the spot.
+	var behind := Transform3D(Basis(Vector3.RIGHT, PI / 2) * LEVEL_GRIP, Vector3(0.15, 1.48, 0.18))
+	for i: int in 60:
+		right.set_pose(&"grip", aim.interpolate_with(behind, (i + 1) / 60.0), Vector3.ZERO, Vector3.ZERO, XRPose.XR_TRACKING_CONFIDENCE_HIGH)
+		await wait_physics_frames(1)
+	assert_eq(shoulder.collision_layer, 0, "pointing up, it goes by")
+	assert_eq(hand.held, ar.grip, "still in the hand")
+	right.set_input(&"grip", 0.0)
+	await wait_physics_frames(2)
+	assert_eq((player.get_node("RightShoulderHolster") as Holster).gun, ar, "put away")
+	XRServer.remove_tracker(right)
+	XRServer.remove_tracker(left)

@@ -20,10 +20,16 @@ func _exit_tree() -> void:
 
 ## Puts the gun in the first free holster its grip is in. Returns whether one took it.
 static func stow(released: Gun) -> bool:
+	var grip := released.grip.global_position
 	for holster: Holster in all:
-		if not holster.gun and holster.in_reach(released.grip.global_position):
+		if not holster.gun and holster.in_reach(grip):
 			holster._take(released)
 			return true
+	# How far off a near miss was, for placing them where hands go.
+	for holster: Holster in all:
+		var off := holster.spot().origin.distance_to(grip)
+		if off < holster.radius * 3.0:
+			DebugLog.event("hand", "%s let go %.2f m from the %s, which takes one within %.2f m" % [released.name, off, holster.name, holster.radius])
 	return false
 
 

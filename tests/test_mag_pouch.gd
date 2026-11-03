@@ -143,9 +143,11 @@ func test_a_full_pool_reuses_the_oldest_mag_at_rest_and_refills_it() -> void:
 	# Drawn without a hand to take them, so they drop to the floor and settle.
 	await wait_physics_frames(240)
 	assert_true(first.sleeping and second.sleeping, "both at rest")
-	var third := _pouch.draw(_left).owner as Magazine
+	await _squeeze(_left)
+	var third := _left.held.owner as Magazine if _left.held else null
 	assert_eq(third, first, "the oldest comes back")
 	assert_eq(third.count, third.capacity, "full again")
+	assert_lt(third.grab_point.palm_transform().origin.distance_to(_left.global_position), 0.03, "into the palm, from wherever it lay")
 	assert_eq(_magazines(), 2, "no new body")
 
 
